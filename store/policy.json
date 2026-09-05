@@ -1,0 +1,48 @@
+{
+  "app": "Umbra",
+  "org": "SocialSure Private Limited",
+  "site": "https://shayanmohd.github.io/umbra/",
+  "email": "shayanm2002@gmail.com",
+  "bg": "#05070C",
+  "fg": "#E8EDF6",
+  "muted": "#9AA7BC",
+  "hair": "#1C2532",
+  "accent": "#FFB454",
+  "bgDark": "#05070C",
+  "fgDark": "#E8EDF6",
+  "mutedDark": "#9AA7BC",
+  "hairDark": "#1C2532",
+  "accentDark": "#FFB454",
+  "fontFamily": "'Space Grotesk', -apple-system, 'Segoe UI', Roboto, sans-serif",
+  "fontCss": "fonts/fonts.css",
+  "headline": "Umbra has no network permission. It cannot send anything anywhere, and this page explains how you can check that for yourself.",
+  "permissions": [
+    ["VIBRATE", "A short tap when you tick something off in the log or set a reminder. Nothing else uses it"],
+    ["POST_NOTIFICATIONS", "To deliver the evening heads up, the eclipse warning and the Sunday digest, all of which are computed on the device and scheduled by the device. They are off until you turn them on, and the app sends at most one a day"]
+  ],
+  "network": false,
+  "collects": [],
+  "storage": "Everything Umbra knows lives in this app's private storage on your phone: the places you typed in, their Bortle numbers, your observation log, your life list and your settings. There is no account, no sync and no analytics. The app can write the whole lot out as a JSON file into your Downloads folder whenever you ask it to, which is the only way any of it leaves the app.",
+  "extra": [
+    [
+      "There is no location permission",
+      "This is the part people expect to be untrue of an astronomy app. Umbra does not request ACCESS_FINE_LOCATION or ACCESS_COARSE_LOCATION, does not call the browser geolocation API, and has no way to read where your phone is. You type a place, or pick a city from a list that ships inside the app, and it works from those coordinates. You can check this on the Play listing, which shows every permission the app declares."
+    ],
+    [
+      "Nothing is downloaded, ever",
+      "The app does not hold the INTERNET permission, so it cannot fetch a forecast, an ephemeris, a map tile or an advert even if it wanted to. Every number it shows you, from tonight's sunset to an eclipse in 2027, is computed on the device from published astronomical algorithms that ship inside the app. Fonts are bundled. There are no third party SDKs, no trackers and no crash reporting."
+    ],
+    [
+      "Notifications are computed here",
+      "When you turn alerts on, the app works out the next six weeks of nights, decides which ones clear the score you set, and hands that list to Android's alarm scheduler. No server knows your schedule, because no server is involved. Turning alerts off cancels the lot."
+    ],
+    [
+      "It is not backed up to the cloud",
+      "The app declares allowBackup=\"false\", so your log is not copied into Google Drive or moved to a new phone behind your back. Moving your log to another phone is the JSON export, which you do on purpose."
+    ],
+    [
+      "Children",
+      "Umbra is suitable for all ages, collects nothing from anybody, and has no adverts, no purchases and no user generated content."
+    ]
+  ]
+}

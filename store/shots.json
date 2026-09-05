@@ -1,0 +1,42 @@
+{
+ "url": "http://127.0.0.1:8731/index.html",
+ "out": "/Users/sherry/Documents/DEVPROJECTS/umbra/store/screenshots",
+ "width": 540,
+ "height": 960,
+ "dpr": 2,
+ "wait": 1200,
+ "colorScheme": "dark",
+ "seed": "(function(){ var T = new Date('2026-12-13T20:40:00+01:00').getTime(); Date.now = function(){ return T; }; try { localStorage.setItem('umbra.v1', \"{\\\"places\\\": [{\\\"id\\\": \\\"p1\\\", \\\"name\\\": \\\"Gothenburg\\\", \\\"lat\\\": 57.71, \\\"lon\\\": 11.97, \\\"bortle\\\": 6}, {\\\"id\\\": \\\"p2\\\", \\\"name\\\": \\\"The field at Onnered\\\", \\\"lat\\\": 57.05, \\\"lon\\\": 12.65, \\\"bortle\\\": 4}], \\\"homeId\\\": \\\"p1\\\", \\\"compareId\\\": \\\"p2\\\", \\\"log\\\": [{\\\"id\\\": \\\"l1\\\", \\\"at\\\": 1786570800000, \\\"nightOf\\\": 1786552800000, \\\"placeId\\\": \\\"p2\\\", \\\"phenomena\\\": [\\\"peak\\\", \\\"fire\\\"], \\\"note\\\": \\\"Perseids from the field. Two fireballs inside ten minutes, both leaving trains.\\\", \\\"ctx\\\": {\\\"score\\\": 8.1, \\\"lm\\\": 6.3, \\\"moon\\\": 0.11, \\\"bortle\\\": 4, \\\"top\\\": \\\"Perseids\\\"}}, {\\\"id\\\": \\\"l2\\\", \\\"at\\\": 1792001400000, \\\"nightOf\\\": 1791983400000, \\\"placeId\\\": \\\"p1\\\", \\\"phenomena\\\": [\\\"earth\\\", \\\"jmoons\\\"], \\\"note\\\": \\\"Balcony, twenty minutes. Three moons on one side of Jupiter, one on the other.\\\", \\\"ctx\\\": {\\\"score\\\": 5.2, \\\"lm\\\": 5.4, \\\"moon\\\": 0.08, \\\"bortle\\\": 6, \\\"top\\\": \\\"Jupiter\\\"}}, {\\\"id\\\": \\\"l3\\\", \\\"at\\\": 1784327400000, \\\"nightOf\\\": 1784309400000, \\\"placeId\\\": \\\"p2\\\", \\\"phenomena\\\": [\\\"mwcore\\\", \\\"and\\\"], \\\"note\\\": \\\"First time I have properly seen the core. Andromeda was easy once I looked away from it.\\\", \\\"ctx\\\": {\\\"score\\\": 7.4, \\\"lm\\\": 6.5, \\\"moon\\\": 0.02, \\\"bortle\\\": 4, \\\"top\\\": \\\"The Milky Way core\\\"}}, {\\\"id\\\": \\\"l4\\\", \\\"at\\\": 1782077400000, \\\"nightOf\\\": 1782059400000, \\\"placeId\\\": \\\"p1\\\", \\\"phenomena\\\": [\\\"nlc\\\"], \\\"note\\\": \\\"Noctilucent cloud over the harbour at half past eleven. Electric blue, exactly as described.\\\", \\\"ctx\\\": {\\\"score\\\": 3.9, \\\"lm\\\": 4.9, \\\"moon\\\": 0.44, \\\"bortle\\\": 6, \\\"top\\\": null}}, {\\\"id\\\": \\\"l5\\\", \\\"at\\\": 1757273400000, \\\"nightOf\\\": 1757255400000, \\\"placeId\\\": \\\"p1\\\", \\\"phenomena\\\": [\\\"tle\\\"], \\\"note\\\": \\\"Total lunar eclipse from the kitchen window. Copper, and much darker than I expected.\\\", \\\"ctx\\\": {\\\"score\\\": 8.9, \\\"lm\\\": 4.4, \\\"moon\\\": 1.0, \\\"bortle\\\": 6, \\\"top\\\": \\\"Total lunar eclipse\\\"}}, {\\\"id\\\": \\\"l6\\\", \\\"at\\\": 1772740800000, \\\"nightOf\\\": 1772722800000, \\\"placeId\\\": \\\"p2\\\", \\\"phenomena\\\": [\\\"orion\\\", \\\"glob\\\"], \\\"note\\\": \\\"Orion low in the west, M13 found on the third try.\\\", \\\"ctx\\\": {\\\"score\\\": 6.1, \\\"lm\\\": 6.4, \\\"moon\\\": 0.19, \\\"bortle\\\": 4, \\\"top\\\": \\\"Jupiter\\\"}}, {\\\"id\\\": \\\"l7\\\", \\\"at\\\": 1794802200000, \\\"nightOf\\\": 1794784200000, \\\"placeId\\\": \\\"p1\\\", \\\"phenomena\\\": [\\\"conj\\\"], \\\"note\\\": \\\"Venus and Saturn a thumb apart over the rooftops, in twilight.\\\", \\\"ctx\\\": {\\\"score\\\": 5.6, \\\"lm\\\": 5.2, \\\"moon\\\": 0.31, \\\"bortle\\\": 6, \\\"top\\\": \\\"Venus and Saturn\\\"}}, {\\\"id\\\": \\\"l8\\\", \\\"at\\\": 1765675800000, \\\"nightOf\\\": 1765657800000, \\\"placeId\\\": \\\"p2\\\", \\\"phenomena\\\": [\\\"train\\\"], \\\"note\\\": \\\"Geminid left a train that hung there for four or five seconds. Nobody else was awake.\\\", \\\"ctx\\\": {\\\"score\\\": 8.6, \\\"lm\\\": 6.5, \\\"moon\\\": 0.06, \\\"bortle\\\": 4, \\\"top\\\": \\\"Geminids\\\"}}], \\\"reminders\\\": {}, \\\"settings\\\": {\\\"clock24\\\": true, \\\"red\\\": \\\"off\\\", \\\"alerts\\\": {\\\"on\\\": true, \\\"min\\\": 7.0, \\\"hour\\\": 18, \\\"eclipses\\\": true, \\\"digest\\\": true}, \\\"seenIntro\\\": true}, \\\"firstRun\\\": 1730000000000}\"); } catch(e){} })()",
+ "shots": [
+  {
+   "name": "01-tonight",
+   "before": "(async()=>{ App.setView('tonight'); document.querySelector('#v-tonight').scrollTop=0; })()",
+   "waitMs": 900
+  },
+  {
+   "name": "02-night",
+   "before": "(async()=>{ document.querySelector('#v-tonight').scrollTop=690; })()",
+   "waitMs": 600
+  },
+  {
+   "name": "03-events",
+   "before": "(async()=>{ App.setView('events'); await new Promise(r=>setTimeout(r,2200)); document.querySelector('#v-events').scrollTop=0; })()",
+   "waitMs": 900
+  },
+  {
+   "name": "04-shower",
+   "before": "(async()=>{ var b=[].slice.call(document.querySelectorAll('#eventsBody .row')).filter(function(r){return r.innerText.indexOf('Geminids')>=0})[0]; b.click(); await new Promise(r=>setTimeout(r,700)); })()",
+   "waitMs": 800
+  },
+  {
+   "name": "05-places",
+   "before": "(async()=>{ App.back(); App.setView('places'); await new Promise(r=>setTimeout(r,500)); document.querySelector('#v-places').scrollTop=600; })()",
+   "waitMs": 800
+  },
+  {
+   "name": "06-log",
+   "before": "(async()=>{ App.setView('log'); await new Promise(r=>setTimeout(r,500)); document.querySelector('#v-log').scrollTop=110; })()",
+   "waitMs": 800
+  }
+ ]
+}

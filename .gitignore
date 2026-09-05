@@ -1,0 +1,21 @@
+# Signing material never goes near the repository.
+*.jks
+*.keystore
+android/keystore.properties
+android/local.properties
+
+# Build output
+android/build/
+android/app/build/
+android/.gradle/
+android/.kotlin/
+build/
+.gradle/
+
+# The web core is copied into the shell at build time.
+android/app/src/main/assets/www/
+
+# macOS
+.DS_Store
+keystore.properties
+local.properties
