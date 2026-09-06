@@ -1,5 +1,5 @@
 {
- "url": "http://127.0.0.1:8731/index.html",
+ "url": "http://127.0.0.1:8811/index.html",
  "out": "/Users/sherry/Documents/DEVPROJECTS/umbra/store/screenshots",
  "width": 540,
  "height": 960,
@@ -30,8 +30,8 @@
   },
   {
    "name": "05-places",
-   "before": "(async()=>{ App.back(); App.setView('places'); await new Promise(r=>setTimeout(r,500)); document.querySelector('#v-places').scrollTop=600; })()",
-   "waitMs": 800
+   "before": "(async()=>{ App.back(); App.setView('places'); await new Promise(r=>setTimeout(r,600)); var v=document.querySelector('#v-places'); var h=[].slice.call(v.querySelectorAll('.h2')).filter(function(e){return /side by side/i.test(e.textContent)})[0]; v.scrollTop += h ? h.getBoundingClientRect().top - 76 : 600; })()",
+   "waitMs": 900
   },
   {
    "name": "06-log",

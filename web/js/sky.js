@@ -606,7 +606,7 @@ const Sky = (() => {
             : { label: 'Not visible here', local: null };
     } else if (ev.kind === 'lunar-eclipse') {
       const l = ev.ecl.local;
-      r = l ? { label: l.type + ', Moon ' + Math.round(l.moonAlt) + ' deg up', local: l }
+      r = l ? { label: l.type + ', Moon ' + Math.round(l.moonAlt) + '\u00B0 up', local: l }
             : { label: 'Moon below the horizon', local: null };
     } else if (ev.kind === 'conjunction') {
       // The interesting moment is not the exact minimum, which is often at noon, but the
@@ -619,8 +619,8 @@ const Sky = (() => {
       }
       r = seen
         ? { alt: seen.alt, at: seen.at, sep: seen.sep, night: on,
-            label: seen.alt < 8 ? 'Low, ' + Math.round(seen.alt) + ' deg up'
-                                : Math.round(seen.alt) + ' deg up' }
+            label: seen.alt < 8 ? 'Low, ' + Math.round(seen.alt) + '\u00B0 up'
+                                : Math.round(seen.alt) + '\u00B0 up' }
         : { alt: 0, at: ev.at, sep: ev.conj.sep, label: 'Not visible here' };
     } else if (ev.kind === 'opposition' || ev.kind === 'elongation') {
       const n = night(place, ev.at);
@@ -633,7 +633,7 @@ const Sky = (() => {
         const aa = A.altaz(p.ra, p.dec, jj, place.lat, place.lon);
         if (aa.alt > best) { best = aa.alt; at = t; }
       }
-      r = { alt: best, at, label: best < 8 ? 'Barely clears' : Math.round(best) + ' deg up' };
+      r = { alt: best, at, label: best < 8 ? 'Barely clears' : Math.round(best) + '\u00B0 up' };
     }
     ev.rating = r;
     return r;

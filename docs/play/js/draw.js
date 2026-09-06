@@ -158,7 +158,7 @@ const Draw = (() => {
       g.beginPath(); g.moveTo(0, y(a)); g.lineTo(w, y(a)); g.stroke();
       g.fillStyle = css('--dim'); g.font = '10px ' + css('--font');
       g.textAlign = 'left'; g.textBaseline = 'bottom';
-      if (a) g.fillText(a + ' deg', 2, y(a) - 2);
+      if (a) g.fillText(a + '\u00B0', 2, y(a) - 2);
     }
     g.strokeStyle = css('--accent'); g.lineWidth = 2;
     g.beginPath();
@@ -190,7 +190,7 @@ const Draw = (() => {
     for (const a of [0, 30, 60, 90]) { g.beginPath(); g.moveTo(pad, y(a)); g.lineTo(w - pad, y(a)); g.stroke(); }
     g.font = '10px ' + css('--font'); g.textBaseline = 'bottom'; g.textAlign = 'left';
     g.fillStyle = css('--dim');
-    g.fillText('90 deg, overhead', pad + 2, y(90) + 12);
+    g.fillText('90\u00B0 overhead', pad + 2, y(90) + 12);
     g.fillText('horizon', pad + 2, base - 2);
 
     g.textAlign = 'center'; g.textBaseline = 'top';

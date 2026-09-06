@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Display"; src: url("display.ttf"); }
+  html, body { margin: 0; width: 1024px; height: 500px; overflow: hidden; }
+  body {
+    position: relative; color: #EEF2FA; font-family: "Display", "Space Grotesk", -apple-system, "Segoe UI", Roboto, sans-serif;
+    background:
+      radial-gradient(46% 90% at 26% 52%, rgba(255, 180, 84, 0.34), rgba(255, 180, 84, 0) 62%),
+      radial-gradient(70% 60% at 80% 0%, rgba(38, 60, 120, 0.55), rgba(38, 60, 120, 0) 70%),
+      linear-gradient(180deg, #1C2E62 0%, #0D1838 52%, #05091B 100%);
+  }
+  .grain { position: absolute; inset: 0; opacity: 0.06; mix-blend-mode: overlay;
+    background-image: repeating-radial-gradient(circle at 21% 37%, rgba(255,255,255,0.9) 0 0.6px, transparent 0.6px 3px),
+                      repeating-radial-gradient(circle at 67% 73%, rgba(255,255,255,0.7) 0 0.5px, transparent 0.5px 2.7px); }
+  .star { position: absolute; border-radius: 50%; background: #FFF4DC; }
+  svg.mark { position: absolute; left: 76px; top: 58px; width: 384px; height: 384px; overflow: visible; }
+  .copy { position: absolute; left: 486px; top: 136px; width: 500px; }
+  h1 { margin: 0; font-size: 122px; line-height: 1; letter-spacing: -0.035em; font-weight: 700;
+       text-shadow: 0 8px 34px rgba(3, 6, 20, 0.6); }
+  p { margin: 20px 0 0 5px; font-size: 31px; line-height: 1.25; color: #FFD68C; max-width: 470px;
+      letter-spacing: -0.01em; }
+  .rule { position: absolute; left: 491px; top: 118px; width: 74px; height: 5px; border-radius: 3px;
+          background: linear-gradient(90deg, #FFF3D2, #F0A64E); }
+</style>
+</head>
+<body>
+  <div class="grain"></div>
+  <div class="star" style="left:560px;top:64px;width:4px;height:4px;opacity:.9"></div>
+  <div class="star" style="left:868px;top:92px;width:3px;height:3px;opacity:.75"></div>
+  <div class="star" style="left:722px;top:38px;width:2px;height:2px;opacity:.6"></div>
+  <div class="star" style="left:948px;top:404px;width:3px;height:3px;opacity:.55"></div>
+  <div class="star" style="left:44px;top:66px;width:3px;height:3px;opacity:.6"></div>
+  <div class="star" style="left:120px;top:440px;width:2px;height:2px;opacity:.5"></div>
+  <div class="star" style="left:640px;top:456px;width:2px;height:2px;opacity:.45"></div>
+
+  <svg class="mark" viewBox="18 18 72 72" aria-hidden="true">
+    <defs>
+      <radialGradient id="disc" cx="0.64" cy="0.32" r="0.9">
+        <stop offset="0" stop-color="#22325F"/><stop offset="0.5" stop-color="#0C1533"/><stop offset="1" stop-color="#03061A"/>
+      </radialGradient>
+      <linearGradient id="ring" x1="0.15" y1="0" x2="0.85" y2="1">
+        <stop offset="0" stop-color="#FFF3D2"/><stop offset="0.42" stop-color="#FFC66E"/><stop offset="1" stop-color="#E0842A"/>
+      </linearGradient>
+      <filter id="wide" filterUnits="userSpaceOnUse" x="0" y="0" width="108" height="108"><feGaussianBlur stdDeviation="5.5"/></filter>
+      <filter id="soft" filterUnits="userSpaceOnUse" x="0" y="0" width="108" height="108"><feGaussianBlur stdDeviation="1.7"/></filter>
+      <filter id="hair" filterUnits="userSpaceOnUse" x="0" y="0" width="108" height="108"><feGaussianBlur stdDeviation="0.55"/></filter>
+      <filter id="shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="108" height="108">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2.4"/><feOffset dy="2.2" result="o"/>
+        <feFlood flood-color="#02040E" flood-opacity="0.75"/><feComposite in2="o" operator="in"/>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <!-- the corona: a wide soft glow, then the streamers, then a tighter halo on the ring -->
+    <circle cx="54" cy="54" r="27" fill="#FFB454" opacity="0.72" filter="url(#wide)"/>
+    <g fill="#FFD790" opacity="0.62" filter="url(#hair)"><polygon points="67.48,34.75 69.42,36.26 76.47,25.24"/><polygon points="75.43,44.37 76.11,46.04 84.13,41.83"/><polygon points="55.64,30.56 57.27,30.73 57.29,22.67"/><polygon points="77.13,58.16 76.82,59.61 83.83,60.34"/><polygon points="42.39,33.57 43.55,32.95 40.15,27.95"/><polygon points="72.39,68.63 71.6,69.57 75.83,72.32"/><polygon points="32.47,63.41 31.97,62.19 26.65,65.05"/><polygon points="32.42,44.7 33.01,43.44 26.36,41.11"/><polygon points="43.48,75.01 42.46,74.47 41.09,78.28"/><polygon points="45.46,32.11 46.47,31.74 44.59,28.16"/><polygon points="58.56,77.05 57.6,77.22 58.69,80.59"/></g>
+    <circle cx="54" cy="54" r="23.5" fill="none" stroke="#FFC66E" stroke-width="4.5" opacity="0.55" filter="url(#soft)"/>
+    <!-- the ring itself -->
+    <circle cx="54" cy="54" r="23.5" fill="none" stroke="url(#ring)" stroke-width="2.7"/>
+    <!-- the disc, with a soft tinted shadow so it sits in front of the light -->
+    <circle cx="54" cy="54" r="22.3" fill="url(#disc)" filter="url(#shadow)"/>
+    <!-- limb light: the edge nearest the bead catches a little -->
+    <path d="M34.86 42.95 A22.1 22.1 0 0 1 75.98 51.69" fill="none" stroke="#FFF3D2" stroke-width="0.9" opacity="0.55" filter="url(#hair)"/>
+    <!-- the bead: sunlight through a lunar valley -->
+    <circle cx="67.14" cy="34.52" r="7" fill="#FFE2A6" opacity="0.75" filter="url(#soft)"/>
+    <path d="M58.14 34.52h18M67.14 25.52v18" stroke="#FFF6E0" stroke-width="0.9" opacity="0.6" filter="url(#hair)"/>
+    <circle cx="67.14" cy="34.52" r="3.1" fill="#FFF8E6"/>
+  </svg>
+
+  <div class="rule"></div>
+  <div class="copy">
+    <h1>Umbra</h1>
+    <p>Know whether tonight is worth going outside for.</p>
+  </div>
+</body>
+</html>

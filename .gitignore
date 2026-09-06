@@ -19,3 +19,6 @@ android/app/src/main/assets/www/
 .DS_Store
 keystore.properties
 local.properties
+
+# Drive script screenshots
+test/shots/

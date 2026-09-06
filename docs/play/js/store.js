@@ -15,6 +15,8 @@ const Store = (() => {
       alerts: {
         on: false,
         min: 7.5,            // the score at which a night is worth telling you about
+        minSet: false,       // true once the slider is moved by hand, so Umbra stops tuning it
+        tunedFor: null,      // "placeId:bortle" of the sky the bar was last calibrated for
         hour: 18,            // when the evening heads up lands, on the place's clock
         eclipses: true,
         digest: true
@@ -25,6 +27,9 @@ const Store = (() => {
   };
 
   let db = load();
+  /* A record written by 1.0.0 is upgraded in memory on load; write it back once so the
+     upgrade is not repeated on every open. */
+  if (db.upgraded) { delete db.upgraded; save(); }
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function load() {
@@ -33,7 +38,15 @@ const Store = (() => {
       if (!raw) return clone(DEFAULTS);
       const d = JSON.parse(raw);
       const s = Object.assign(clone(DEFAULTS.settings), d.settings || {});
-      s.alerts = Object.assign(clone(DEFAULTS.settings.alerts), (d.settings || {}).alerts || {});
+      const oldAlerts = (d.settings || {}).alerts || {};
+      s.alerts = Object.assign(clone(DEFAULTS.settings.alerts), oldAlerts);
+      /* 1.0.0 had no minSet flag. A bar that differs from the old default of 7.5 was moved by
+         hand, and must never be overwritten by calibration. A bar still at 7.5 was never
+         touched, so the calibration a new install gets is the right thing for it too. */
+      if (oldAlerts.minSet === undefined && typeof oldAlerts.min === 'number' && oldAlerts.min !== 7.5) s.alerts.minSet = true;
+      const upgraded = oldAlerts.minSet === undefined;
+      if (typeof s.alerts.min !== 'number' || !isFinite(s.alerts.min)) s.alerts.min = DEFAULTS.settings.alerts.min;
+      s.alerts.min = Math.min(9.5, Math.max(5, s.alerts.min));
       return {
         places: Array.isArray(d.places) ? d.places.filter(validPlace) : [],
         homeId: d.homeId || null,
@@ -41,7 +54,8 @@ const Store = (() => {
         log: Array.isArray(d.log) ? d.log : [],
         reminders: d.reminders && typeof d.reminders === 'object' ? d.reminders : {},
         settings: s,
-        firstRun: d.firstRun || null
+        firstRun: d.firstRun || null,
+        upgraded
       };
     } catch (e) { return clone(DEFAULTS); }
   }
@@ -131,10 +145,44 @@ const Store = (() => {
       lifeList: ticks()
     }, null, 2);
   }
+  /** Reads a file Umbra exported and folds it in. Places and entries already here are left
+      alone; everything new is added. Returns what happened, or a reason it could not. */
+  function importJson(text) {
+    let d;
+    try { d = JSON.parse(text); } catch (e) { return { error: 'That file could not be read as JSON.' }; }
+    if (!d || d.app !== 'Umbra' || !Array.isArray(d.places) || !Array.isArray(d.log))
+      return { error: 'That is not an Umbra export.' };
+    const idMap = {};
+    let places = 0, entries = 0;
+    for (const p of d.places) {
+      if (!validPlace(p)) continue;
+      const same = db.places.find(q => q.id === p.id || (q.name === p.name && Math.abs(q.lat - p.lat) < 0.001 && Math.abs(q.lon - p.lon) < 0.001));
+      if (same) { idMap[p.id] = same.id; continue; }
+      const np = { id: db.places.some(q => q.id === p.id) ? uid('pl') : String(p.id || uid('pl')),
+                   name: String(p.name || 'Unnamed place').slice(0, 40),
+                   lat: +(+p.lat).toFixed(4), lon: +(+p.lon).toFixed(4),
+                   bortle: Math.min(9, Math.max(1, Math.round(p.bortle || 6))) };
+      idMap[p.id] = np.id;
+      db.places.push(np); places++;
+    }
+    for (const e of d.log) {
+      if (!e || typeof e.at !== 'number' || !isFinite(e.at)) continue;
+      if (db.log.some(x => x.id === e.id)) continue;
+      db.log.push({ id: String(e.id || uid('lg')), at: e.at, nightOf: typeof e.nightOf === 'number' ? e.nightOf : null,
+                    placeId: idMap[e.placeId] || (place(e.placeId) ? e.placeId : null),
+                    phenomena: Array.isArray(e.phenomena) ? e.phenomena.filter(x => typeof x === 'string').slice(0, 12) : [],
+                    note: String(e.note || '').slice(0, 600),
+                    ctx: e.ctx && typeof e.ctx === 'object' ? e.ctx : {} });
+      entries++;
+    }
+    if (!db.homeId && db.places[0]) db.homeId = db.places[0].id;
+    save();
+    return { places, entries };
+  }
   function eraseAll() { db = clone(DEFAULTS); save(); }
 
   return { places, place, home, addPlace, patchPlace, removePlace, setHome, setCompare, compare,
            log, addEntry, patchEntry, removeEntry, ticks, stats,
-           reminded, toggleReminder, settings, set, setAlert, exportJson, eraseAll,
+           reminded, toggleReminder, settings, set, setAlert, exportJson, importJson, eraseAll,
            get raw() { return db; } };
 })();

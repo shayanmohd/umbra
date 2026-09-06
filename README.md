@@ -24,7 +24,7 @@ algorithms that ship inside the binary.
   conjunctions, new and full moons, solstices and equinoxes.
 - **Two places side by side**, so the question "is the drive worth it" gets a number.
 - **A life list and an observation log**, with the computed conditions attached to each entry and
-  a JSON export.
+  a JSON export that imports again on another phone.
 - **Red light mode** for the whole app, manual or automatic after dusk.
 - **Local notifications** computed on the device: an evening heads up when a night clears the score
   you set, an eclipse warning, and a Sunday digest that stays quiet when the week holds nothing.
@@ -38,11 +38,12 @@ web/                 the app: no build step, no framework, no CDN, works offline
   js/sky.js          the model: nights, darkness, rates, the score, the year ahead
   js/store.js        one localStorage record
   js/notify.js       the alert schedule, computed here and handed to the system
-  js/draw.js         every picture in the app, drawn on canvas from the numbers
+  js/draw.js         every chart in the app, drawn on canvas from the numbers
+  js/art.js          the eclipse ring and the drawn scenes, inline SVG
   js/app.js          screens, routing and the window.App contract the shell needs
 android/             WebView shell: haptics, file export, local notifications
 docs/                landing page, privacy policy and a playable copy of web/
-store/               brand spec, icons, screenshots, listing copy
+store/               icon.svg and feature.html, the rendered icons, screenshots, listing copy
 ```
 
 ## Building

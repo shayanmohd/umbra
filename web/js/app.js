@@ -15,6 +15,8 @@ const App = (() => {
   let nightCache = {};
   let feed = null, feedFor = null, feedFilter = 'hi';
   let page = null;              // { title, render, key }
+  let pageStack = [];           // the pages underneath the open one, so Back retraces steps
+  let quietUntil = 0;           // ignore taps for a moment after a sheet or page closes
   let onboardStep = 0, onboardDraft = {};
   let redAuto = false;
 
@@ -36,7 +38,7 @@ const App = (() => {
   const wdayName = (t, place) => WDAY[P(t, place).getUTCDay()];
   const dateLong = (t, place) => dayNum(t, place) + ' ' + MONTH[P(t, place).getUTCMonth()];
   const monthKey = (t, place) => MONTH[P(t, place).getUTCMonth()] + ' ' + P(t, place).getUTCFullYear();
-  const deg = v => Math.round(v) + ' deg';
+  const deg = v => Math.round(v) + '\u00B0';
 
   function hoursText(h) {
     if (h <= 0) return 'none';
@@ -49,6 +51,29 @@ const App = (() => {
 
   const CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
   const card = (inner, cls) => '<div class="card' + (cls ? ' ' + cls : '') + '">' + inner + '</div>';
+  const emptyState = (art, title, sub) =>
+    '<div class="empty">' + art + '<b>' + esc(title) + '</b><span>' + esc(sub) + '</span></div>';
+
+  /** Lists arrive one card after another rather than all at once. */
+  function stagger(root) {
+    if (!root) return;
+    let i = 0;
+    for (const el of root.children) { el.style.setProperty('--i', i++); el.classList.add('in'); }
+  }
+
+  /** An error belongs next to the thing that caused it, not in a toast that vanishes. */
+  function inlineErr(scope, msg) {
+    const box = $(scope);
+    if (!box) return;
+    let el = box.querySelector('.err');
+    if (!msg) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('p'); el.className = 'err'; el.setAttribute('role', 'alert'); }
+    el.textContent = msg;
+    const anchor = [...box.children].find(c => c.matches('.btnrow, [data-act="saveplace"], [data-act="ob-next"]'));
+    if (anchor) box.insertBefore(el, anchor); else box.appendChild(el);
+    el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+    buzz(20, 120);
+  }
 
   function partRow(p) {
     return '<div class="part"><span class="lab">' + esc(p.label) + '</span>' +
@@ -95,9 +120,10 @@ const App = (() => {
     H.push('<p class="lede">' + esc(lede) + '</p>');
 
     /* the score */
-    let sc = '<div class="score"><span class="val num">' + s.value.toFixed(1) + '</span>' +
-      '<span class="of">out of ten<br>worth going outside</span></div>' +
-      '<p class="verdict">' + esc(s.verdict) + '</p>' +
+    let sc = '<div class="hero"><div class="hero-ring">' + Art.eclipse(s.value / 10) +
+      '<span class="val num">' + s.value.toFixed(1) + '</span></div>' +
+      '<div class="hero-t"><span class="of">Tonight, out of ten</span>' +
+      '<p class="verdict">' + esc(s.verdict) + '</p></div></div>' +
       '<div class="parts">' + s.parts.map(partRow).join('') + '</div>' +
       '<p class="note">Umbra cannot see your weather. It scores the sky, and the clouds are still your call.</p>';
     H.push(card(sc));
@@ -119,14 +145,14 @@ const App = (() => {
     /* what is on */
     H.push('<p class="h2">Reasons to go out</p>');
     const rows = m.list.slice(0, 7).map((h, i) => happeningRow(h, place, i)).join('');
-    H.push(card(rows || '<p class="empty">Nothing scheduled tonight. The sky is still open.</p>'));
+    H.push(card(rows || emptyState(Art.hill(), 'Nothing scheduled tonight', 'The sky is still open, and the Moon always counts.')));
 
     /* planets */
     const vis = m.planets.filter(p => p.alt > 5 && p.elong > 10);
     if (vis.length) {
       H.push('<p class="h2">Planets tonight</p>');
       H.push(card(vis.map(p =>
-        '<div class="row" style="cursor:default">' +
+        '<div class="row static">' +
         '<span class="when"><b>' + (p.mag > 0 ? '+' : '') + p.mag.toFixed(1) + '</b>mag</span>' +
         '<span class="t"><b>' + esc(p.name) + '</b><i>' + esc(p.verdict) + ', ' + deg(p.alt) + ' up in the ' +
         esc(Data.compass(p.az)) + ' around ' + clock(p.at, place) + '</i></span>' +
@@ -150,6 +176,7 @@ const App = (() => {
            'The method, and what it cannot do, is written out in Settings.</p>');
 
     $('#tonightBody').innerHTML = H.join('');
+    stagger($('#tonightBody'));
     drawTonight(m);
   }
 
@@ -208,7 +235,7 @@ const App = (() => {
       if (n.dark) bits.push('<div>' + (n.quality === 'astronomical' ? 'Dark' : 'Darkest') +
         ' <b>' + clock(n.dark.from, place) + ' to ' + clock(n.dark.to, place) + '</b></div>');
       if (n.quality === 'none')
-        bits.push('<div>Sun lowest <b>' + Math.round(low.sun) + ' deg at ' + clock(low.t, place) + '</b></div>');
+        bits.push('<div>Sun lowest <b>' + deg(low.sun) + ' at ' + clock(low.t, place) + '</b></div>');
       else
         bits.push('<div>' + (n.quality === 'astronomical' ? 'True darkness' :
           n.quality === 'nautical' ? 'Nautical twilight' : 'Civil twilight') +
@@ -235,14 +262,10 @@ const App = (() => {
       '<button class="chip' + (f.id === feedFilter ? ' on' : '') + '" data-act="filter" data-id="' + f.id + '">' +
       f.label + '</button>').join('');
 
-    if (feedFor !== place.id) {
+    if (!ensureFeed()) {
       $('#eventsBody').innerHTML = '<h1 class="h1">The year ahead</h1>' +
-        '<p class="lede">Working out the sky for ' + esc(place.name) + '. This takes a moment.</p>';
-      setTimeout(() => {
-        feed = Sky.feed(place, Date.now() - 6 * HOUR, 365);
-        feedFor = place.id;
-        if (view === 'events') renderEvents();
-      }, 24);
+        '<p class="lede">Working out the sky for ' + esc(place.name) + '. This takes a moment.</p>' +
+        card(Art.skeleton(7), 'flush');
       return;
     }
 
@@ -258,8 +281,9 @@ const App = (() => {
       const next = list[list.indexOf(e) + 1];
       if (!next || monthKey(next.at, place) !== month) H.push('</div>');
     }
-    if (!list.length) H.push('<p class="empty">Nothing in this category over the next year.</p>');
+    if (!list.length) H.push(card(emptyState(Art.orbit(), 'Nothing in this category', 'Not over the next year, from ' + place.name + '.')));
     $('#eventsBody').innerHTML = H.join('');
+    stagger($('#eventsBody'));
   }
 
   function matches(e, f) {
@@ -337,8 +361,11 @@ const App = (() => {
       '<button class="btn ' + (on ? 'ghost' : '') + '" data-act="remind" data-key="' + esc(e.key) + '">' +
       (on ? 'Reminder set' : 'Remind me') + '</button>' +
       '<button class="btn ghost" data-act="log-new">Log an observation</button></div>');
-    if (on) H.push('<p class="note">Umbra will raise this the evening before, and again three quarters of an hour ' +
-      'before it starts if it is an eclipse you can see from here.</p>');
+    if (on) H.push('<p class="note">' + (Store.settings().alerts.on
+      ? 'Umbra will raise this on the evening of that night, and again three quarters of an hour ' +
+        'before it starts if it is an eclipse you can see from here.'
+      : 'Alerts are switched off, so this is only a marker for now. Turn on the evening heads up in ' +
+        'Settings and Umbra will raise it on the evening of that night.') + '</p>');
     return H.join('');
   }
 
@@ -362,15 +389,15 @@ const App = (() => {
     H.push('<p class="h2">The radiant, across the night</p>');
     H.push(card('<canvas id="curveCv"></canvas>', 'flush'));
     H.push('<p class="h2">About this shower</p>');
-    H.push(card('<p class="tiny" style="font-size:14.5px;line-height:1.6;color:var(--muted)">' + esc(sh.note) + '</p>' +
-      '<dl class="kv" style="margin-top:12px">' +
+    H.push(card('<p class="prose">' + esc(sh.note) + '</p>' +
+      '<dl class="kv gap">' +
       '<dt>Parent body</dt><dd>' + esc(sh.parent) + '</dd>' +
       '<dt>Speed</dt><dd>' + sh.v + ' km a second</dd>' +
       '<dt>Rate at best, from a perfect sky</dt><dd class="num">' + sh.zhr + ' an hour</dd>' +
       '<dt>Maximum</dt><dd>solar longitude ' + sh.lam.toFixed(1) + '</dd>' +
       '</dl>'));
     H.push('<p class="h2">How to watch</p>');
-    H.push(card('<p class="tiny" style="font-size:14.5px;line-height:1.65;color:var(--muted)">' +
+    H.push(card('<p class="prose">' +
       'Face about half way up the sky, roughly 40 degrees away from the radiant rather than straight at it: ' +
       'meteors near the radiant are foreshortened and look short. Lie back if you can. Give your eyes twenty ' +
       'minutes without a screen, and use red light after that. The rate above assumes you can see the whole sky; ' +
@@ -392,13 +419,13 @@ const App = (() => {
     const l = e.ecl.local, g = e.ecl.global;
     const H = [];
     if (!l) {
-      H.push(card('<h3>Not from here</h3><p class="note">This eclipse happens while the Sun is below your horizon, ' +
-        'or the Moon misses the Sun as seen from this place. It is a ' + esc(g.type.toLowerCase()) +
-        ' eclipse somewhere else on Earth.</p>'));
+      H.push(card(Art.farSide() + '<h3>Not from here</h3><p class="note">This eclipse happens while the Sun is below your horizon, ' +
+        'or the Moon misses the Sun as seen from this place. It is ' + (/^[aeiou]/i.test(g.type) ? 'an ' : 'a ') +
+        esc(g.type.toLowerCase()) + ' eclipse somewhere else on Earth.</p>'));
     } else {
       const edge = l.magnitude > 0.975 && l.magnitude < 1.03;
       H.push(card('<canvas id="eclCv"></canvas>' +
-        '<dl class="kv" style="margin-top:8px">' +
+        '<dl class="kv gap-sm">' +
         '<dt>From here</dt><dd>' + esc(l.type) + '</dd>' +
         '<dt>Sun covered</dt><dd class="num">' + (l.obscuration >= 0.9995 ? '100' : (l.obscuration * 100).toFixed(1)) + ' per cent</dd>' +
         '<dt>Starts</dt><dd class="num">' + (l.start ? clock(Astro.msFromJd(l.start), place) : 'in progress at sunrise') + '</dd>' +
@@ -428,7 +455,7 @@ const App = (() => {
     const seen = !!e.ecl.local;
     const H = [];
     H.push(card('<canvas id="eclCv"></canvas>' +
-      '<dl class="kv" style="margin-top:8px">' +
+      '<dl class="kv gap-sm">' +
       '<dt>Type</dt><dd>' + esc(l.type) + '</dd>' +
       '<dt>Greatest</dt><dd class="num">' + clock(Astro.msFromJd(l.jd), place) + '</dd>' +
       '<dt>Starts</dt><dd class="num">' + (l.start ? clock(Astro.msFromJd(l.start), place) : 'before it rises') + '</dd>' +
@@ -541,7 +568,7 @@ const App = (() => {
       const isHome = home && p.id === home.id;
       const b = Data.BORTLE[p.bortle];
       H.push(card(
-        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">' +
+        '<div class="placehead">' +
         '<div><h3>' + esc(p.name) + (isHome ? ' <span class="badge">Home</span>' : '') +
         (cmp && cmp.id === p.id ? ' <span class="badge quiet">Compared</span>' : '') + '</h3>' +
         '<p class="tiny">' + p.lat.toFixed(3) + ', ' + p.lon.toFixed(3) + '</p>' +
@@ -575,10 +602,11 @@ const App = (() => {
 
     H.push('<p class="h2">What Bortle means</p>');
     H.push(card(Data.BORTLE.slice(1).map(b =>
-      '<div class="row" style="cursor:default"><span class="when"><b>' + b.n + '</b></span>' +
+      '<div class="row static"><span class="when"><b>' + b.n + '</b></span>' +
       '<span class="t"><b>' + esc(b.label) + '</b><i>' + esc(b.blurb) + '</i></span>' +
       '<span class="r quiet num">mag ' + b.lm.toFixed(1) + '</span></div>').join('')));
     $('#placesBody').innerHTML = H.join('');
+    stagger($('#placesBody'));
   }
 
   function compareLine(a, b) {
@@ -626,7 +654,7 @@ const App = (() => {
       hits.innerHTML = found.length ? found.map(c =>
         '<button class="pick" data-act="city" data-lat="' + c.lat + '" data-lon="' + c.lon + '" data-name="' + esc(c.name) + '">' +
         '<b>' + esc(c.name) + '</b><i>' + esc(c.cc) + ', ' + c.lat.toFixed(2) + ' ' + c.lon.toFixed(2) + '</i></button>').join('')
-        : '<p class="tiny" style="padding:4px 2px">No match. Type the coordinates below instead.</p>';
+        : '<p class="tiny pad-s">No match. Type the coordinates below instead.</p>';
     });
     const sl = $('#bSlider');
     sl.addEventListener('input', () => {
@@ -665,20 +693,22 @@ const App = (() => {
     if (entries.length) {
       H.push('<p class="h2">Entries</p>');
       H.push('<div class="card">' + entries.slice(0, 40).map(e => {
-        const pl = Store.place(e.placeId) || place;
+        const known = Store.place(e.placeId), pl = known || place;
         const names = e.phenomena.map(id => (Data.LIFE_INDEX[id] || {}).name || id).join(', ');
+        const where = known ? known.name : '';
         return '<button class="row" data-act="entry" data-id="' + e.id + '">' +
           '<span class="when"><b>' + dayNum(e.at, pl) + '</b>' + monShort(e.at, pl) + '</span>' +
           '<span class="t"><b>' + esc(names || 'A night out') + '</b><i>' +
-          esc((pl ? pl.name : '') + (e.note ? ' . ' + e.note.slice(0, 60) : '')) + '</i></span>' + CHEV + '</button>';
+          esc(where + (e.note ? (where ? ' \u00B7 ' : '') + e.note.slice(0, 60) : '')) + '</i></span>' + CHEV + '</button>';
       }).join('') + '</div>');
       H.push('<div class="btnrow"><button class="btn ghost" data-act="export">Export everything</button></div>');
       H.push('<p class="note">The export is a JSON file written to your Downloads folder. It is the whole log, ' +
         'the places and the life list, and it never leaves the phone unless you send it somewhere.</p>');
     } else {
-      H.push('<p class="note">Nothing logged yet. The first entry is usually the Moon, and that counts.</p>');
+      H.push(card(emptyState(Art.telescope(), 'Nothing logged yet', 'The first entry is usually the Moon, and that counts.')));
     }
     $('#logBody').innerHTML = H.join('');
+    stagger($('#logBody'));
   }
 
   function logSheet(entryId) {
@@ -691,7 +721,7 @@ const App = (() => {
         : 'Tonight from ' + esc(place.name) + '. Umbra attaches the conditions it computed, so the entry ' +
           'remembers what the sky was actually like.') + '</p>' +
       '<div class="field"><label>What did you see?</label><div class="picks" id="phPicks">' +
-      Data.LIFE.map(g => '<p class="tiny" style="margin:8px 0 2px;color:var(--dim)">' + esc(g.g) + '</p>' +
+      Data.LIFE.map(g => '<p class="grp">' + esc(g.g) + '</p>' +
         g.items.map(it => '<button class="pick' + (picked.has(it.id) ? ' on' : '') +
           '" data-act="ph" data-id="' + it.id + '"><b>' + esc(it.name) + '</b></button>').join('')).join('') +
       '</div></div>' +
@@ -710,7 +740,6 @@ const App = (() => {
 
   function settingsPage() {
     const s = Store.settings(), a = s.alerts, place = Store.home();
-    const plan = a.on ? Notify.plan() : [];
     const H = [];
     H.push('<p class="h2">Alerts</p>');
     H.push(card(
@@ -721,17 +750,10 @@ const App = (() => {
       '<p class="tiny" id="ceilNote">Working out what your sky can actually reach.</p></div>' +
       '<div class="field"><label for="hourS">Send it at <b class="num" id="hourV">' + a.hour + ':00</b></label>' +
       '<input type="range" id="hourS" min="12" max="22" step="1" value="' + a.hour + '"></div>' +
-      toggleRow('alerts-ecl', 'Eclipses', 'Three days ahead, and again three quarters of an hour before it starts.', a.eclipses) +
+      toggleRow('alerts-ecl', 'Eclipses', 'Three days ahead, and again three quarters of an hour before it ' +
+        'starts. A penumbral eclipse stays in the calendar.', a.eclipses) +
       toggleRow('alerts-dig', 'Sunday digest', 'The best night of the coming week, once a week.', a.digest)));
-    if (a.on) {
-      H.push(card('<h3>What is scheduled</h3>' + (plan.length
-        ? '<p class="tiny">' + plan.length + ' notification' + (plan.length === 1 ? '' : 's') +
-          ' over the next six weeks. Umbra sends at most one a day.</p>' +
-          plan.slice(0, 6).map(o => '<div class="row" style="cursor:default">' +
-            '<span class="when"><b>' + dayNum(o.at, place) + '</b>' + monShort(o.at, place) + '</span>' +
-            '<span class="t"><b>' + esc(o.title) + '</b><i>' + esc(o.body.slice(0, 90)) + '</i></span></div>').join('')
-        : '<p class="tiny">Nothing clears your bar in the next six weeks. That is the app working, not failing.</p>')));
-    }
+    if (a.on) H.push(card('<h3>What is scheduled</h3><div id="planBox">' + Art.skeleton(3) + '</div>'));
 
     H.push('<p class="h2">Display</p>');
     H.push(card(
@@ -747,12 +769,15 @@ const App = (() => {
     H.push(card('<p class="tiny">Everything Umbra knows is one record in this app\'s own storage: your places, ' +
       'your log, your settings. There is no account, no sync and no network permission.</p>' +
       '<div class="btnrow"><button class="btn ghost" data-act="export">Export as JSON</button>' +
-      '<button class="btn ghost danger" data-act="erase">Erase everything</button></div>'));
+      '<button class="btn ghost" data-act="import">Import a backup</button></div>' +
+      '<input type="file" id="importFile" accept="application/json,.json" hidden>' +
+      '<p class="tiny" id="importNote"></p>' +
+      '<div class="btnrow"><button class="btn ghost danger" data-act="erase">Erase everything</button></div>'));
 
     H.push('<p class="h2">About</p>');
     H.push(card('<button class="row" data-act="method"><span class="t"><b>How the numbers are made</b>' +
       '<i>The algorithms, the approximations and the limits</i></span>' + CHEV + '</button>' +
-      '<div class="row" style="cursor:default"><span class="t"><b>Umbra</b>' +
+      '<div class="row static"><span class="t"><b>Umbra</b>' +
       '<i>An offline sky almanac. No network, no account, no adverts, nothing to buy.</i></span></div>'));
     return H.join('');
   }
@@ -797,17 +822,19 @@ const App = (() => {
   function renderOnboard() {
     const B = $('#onboardBody');
     if (onboardStep === 0) {
-      B.innerHTML = '<h1 class="h1">Umbra</h1>' +
+      const d = onboardDraft;
+      B.innerHTML = '<div class="obmark">' + Art.eclipse(1, 'live') + '</div>' +
+        '<h1 class="h1">Umbra</h1>' +
         '<p class="lede">A sky almanac that runs entirely on this phone. It works out what is happening above ' +
         'your head tonight, how dark it will get, and whether that is worth going outside for.</p>' +
         card('<h3>Where do you watch from?</h3>' +
           '<div class="field"><label for="obCity">Find a city near you</label>' +
-          '<input type="text" id="obCity" placeholder="Type a few letters" autocomplete="off"></div>' +
+          '<input type="text" id="obCity" placeholder="Type a few letters" autocomplete="off" value="' + esc(d.name || '') + '"></div>' +
           '<div id="obHits" class="picks"></div>' +
           '<div class="two"><div class="field"><label for="obLat">Latitude</label>' +
-          '<input type="text" inputmode="decimal" id="obLat" placeholder="51.5074"></div>' +
+          '<input type="text" inputmode="decimal" id="obLat" placeholder="51.5074" value="' + esc(d.lat != null ? d.lat : '') + '"></div>' +
           '<div class="field"><label for="obLon">Longitude</label>' +
-          '<input type="text" inputmode="decimal" id="obLon" placeholder="-0.1278"></div></div>' +
+          '<input type="text" inputmode="decimal" id="obLon" placeholder="-0.1278" value="' + esc(d.lon != null ? d.lon : '') + '"></div></div>' +
           '<p class="tiny">Umbra never asks the phone for your position. Anywhere within fifty kilometres ' +
           'gives the same answers.</p>') +
         '<button class="btn" data-act="ob-next">Continue</button>';
@@ -819,7 +846,7 @@ const App = (() => {
         hits.innerHTML = found.map(c => '<button class="pick" data-act="ob-city" data-lat="' + c.lat +
           '" data-lon="' + c.lon + '" data-name="' + esc(c.name) + '"><b>' + esc(c.name) + '</b><i>' +
           esc(c.cc) + '</i></button>').join('') ||
-          '<p class="tiny" style="padding:4px 2px">No match. Coordinates work too.</p>';
+          '<p class="tiny pad-s">No match. Coordinates work too.</p>';
       });
     } else if (onboardStep === 1) {
       B.innerHTML = '<h1 class="h1">How dark is your sky?</h1>' +
@@ -833,7 +860,7 @@ const App = (() => {
     } else {
       B.innerHTML = '<h1 class="h1">The promise</h1>' +
         '<p class="lede">Most sky apps lose people by crying wolf. Umbra is built the other way round.</p>' +
-        card('<p class="note" style="color:var(--fg);font-size:15px">It sends at most one notification a day, ' +
+        card('<p class="note fg">It sends at most one notification a day, ' +
           'never during the night, and only for a night that clears a score you set yourself. It has no network ' +
           'permission, so it cannot see clouds and it will never claim to. Everything else it tells you is ' +
           'computed here, from the same algorithms an observatory uses.</p>') +
@@ -859,18 +886,46 @@ const App = (() => {
 
   function openPage(title, render, key) {
     const same = page && page.key === key;
+    if (page && !same) pageStack.push(page);
     page = { title, render, key };
     $('#pageTitle').textContent = title;
     $('#pageBody').innerHTML = render();
+    stagger($('#pageBody'));
+    const wasHidden = $('#page').hidden;
     $('#page').hidden = false;
+    $('#page').classList.toggle('stacked', pageStack.length > 0);
     if (!same) $('#page').querySelector('.pagescroll').scrollTop = 0;
-    if (key === 'set') setTimeout(fillCeiling, 40);
+    // The slow pieces of Settings land after the page has slid in, not before it can.
+    if (key === 'set') setTimeout(fillPlan, wasHidden ? 380 : 40);
     if (key && key.startsWith('ev')) {
       const e = (feed || []).find(x => 'ev' + x.key === key);
       if (e) drawEventPage(e, Store.home());
     }
   }
-  function closePage() { page = null; $('#page').hidden = true; }
+  function closePage() {
+    const prev = pageStack.pop();
+    page = null;
+    if (prev) { openPage(prev.title, prev.render, prev.key); return; }
+    $('#page').hidden = true;
+    $('#page').classList.remove('stacked');
+  }
+
+  /** The schedule card and the ceiling note, computed once the page is on screen. */
+  function fillPlan() {
+    if (!page || page.key !== 'set') return;
+    const box = $('#planBox'), place = Store.home();
+    if (box && place) {
+      const plan = Notify.plan(null, reminderAlerts());
+      box.innerHTML = plan.length
+        ? '<p class="tiny">' + plan.length + ' notification' + (plan.length === 1 ? '' : 's') +
+          ' over the next six weeks. Umbra sends at most one a day.</p>' +
+          plan.slice(0, 6).map(o => '<div class="row static">' +
+            '<span class="when"><b>' + dayNum(o.at, place) + '</b>' + monShort(o.at, place) + '</span>' +
+            '<span class="t"><b>' + esc(o.title) + '</b><i>' + esc(o.body.slice(0, 90)) + '</i></span></div>').join('')
+        : '<p class="tiny">Nothing clears your bar in the next six weeks. That is the app working, not failing.</p>';
+    }
+    fillCeiling();
+  }
 
   /** How good does it get here? Without this the threshold slider is a guess. */
   function fillCeiling() {
@@ -879,9 +934,12 @@ const App = (() => {
     const c = Notify.ceiling(42);
     const place = Store.home();
     if (!c) { el.textContent = ''; return; }
-    el.textContent = 'The best night from ' + place.name + ' over the next six weeks scores ' +
-      c.value.toFixed(1) + ', on ' + wdayName(c.t0, place) + ' ' + dateLong(c.t0, place) +
-      '. Set the bar under that or Umbra will have nothing to say.';
+    const lead = 'The best night from ' + place.name + ' over the next six weeks scores ' +
+      c.value.toFixed(1) + ', on ' + wdayName(c.t0, place) + ' ' + dateLong(c.t0, place) + '.';
+    el.textContent = Store.settings().alerts.min > c.value
+      ? lead + ' Your bar sits above that, so no night will clear it in the next six weeks. That is ' +
+        'what a bar set for the best nights of the year looks like from this sky.'
+      : lead + ' Anything at or above your bar reaches you that evening.';
   }
 
   let sheetWire = null;
@@ -889,6 +947,7 @@ const App = (() => {
     $('#sheetTitle').textContent = title;
     $('#sheetBody').innerHTML = render();
     $('#sheet').hidden = false;
+    $('#sheet').querySelector('.sheet-panel').scrollTop = 0;
     sheetWire = wire || null;
     if (wire) wire();
   }
@@ -913,11 +972,81 @@ const App = (() => {
     const p = Store.home();
     if (!p) return;
     $('#placeName').textContent = p.name;
-    $('#placeSub').textContent = 'Bortle ' + p.bortle + ' . ' + p.lat.toFixed(2) + ', ' + p.lon.toFixed(2);
+    $('#placeSub').textContent = 'Bortle ' + p.bortle + ' \u00B7 ' + p.lat.toFixed(2) + ', ' + p.lon.toFixed(2);
   }
 
   function invalidate() {
     nightCache = {}; feed = null; feedFor = null;
+  }
+
+  /** True when the year of events for the home place is in hand. Otherwise it starts
+      working one out and calls `then` when it lands. */
+  function ensureFeed(then) {
+    const place = Store.home();
+    if (!place) return false;
+    if (feedFor === place.id) return true;
+    // Two frames first, so the placeholder rows are on screen before the year is worked out.
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => {
+      feed = Sky.feed(place, Date.now() - 6 * HOUR, 365);
+      feedFor = place.id;
+      if (view === 'events') renderEvents();
+      if (then) then();
+    }, 0)));
+    return false;
+  }
+
+  /** The reminders the user set by hand, turned into an evening alert on the night the
+      event belongs to. Without this the Remind me button would only store a flag. */
+  function reminderAlerts() {
+    const place = Store.home();
+    if (!place || !feed) return [];
+    const a = Store.settings().alerts;
+    const now = Date.now();
+    const out = [];
+    for (const e of feed) {
+      if (!Store.reminded(e.key)) continue;
+      if (e.kind === 'shower' && !e.nightAt) Sky.rate(e, place);
+      const when = e.kind === 'shower' && e.nightAt ? e.nightAt : e.at;
+      // The night is anchored at noon, so the alert time is what decides whether it has passed.
+      const at = Notify.atHour(Sky.anchorFor(when, place), place, a.hour);
+      if (at < now) continue;
+      out.push({
+        at, kind: 'remind', score: 9.5,
+        title: e.title + ', from ' + place.name,
+        body: eventSub(e, place) + '. You asked Umbra to remind you. Clouds are the one thing it cannot see.'
+      });
+    }
+    return out;
+  }
+
+  /** Recompute the whole schedule. Reminders need the year of events, so a cold start
+      works that out first and comes back here. */
+  function syncNotify() {
+    if (!Store.home()) return;
+    if (Object.keys(Store.raw.reminders).length && !ensureFeed(syncNotify)) return;
+    Notify.sync(reminderAlerts());
+  }
+
+  /** Put the alert bar where this sky can actually reach, once, and never over the top
+      of a bar the user has set for themselves. */
+  let tuning = false;
+  const skyKey = p => p ? p.id + ':' + p.bortle : null;
+  function tuneAlertBar() {
+    const a = Store.settings().alerts, home = Store.home();
+    if (!home || tuning || a.minSet) return;
+    const key = skyKey(home);
+    if (a.tunedFor === key) return;
+    tuning = true;
+    Notify.calibrate(v => {
+      tuning = false;
+      if (v == null) return;
+      if (Store.settings().alerts.minSet) return;
+      Store.setAlert('min', v);
+      Store.setAlert('tunedFor', key);
+      if (skyKey(Store.home()) !== key) { tuneAlertBar(); return; }
+      if (page && page.key === 'set') openPage('Settings', settingsPage, 'set');
+      syncNotify();
+    });
   }
 
   /* ================= actions ================= */
@@ -935,8 +1064,8 @@ const App = (() => {
         const t = Data.TARGETS.find(x => x.id === ds.id);
         const m = tonightModel(place);
         const found = m.targets.find(x => x.id === ds.id) || t;
-        openSheet(t.name, () => '<p class="note" style="color:var(--fg)">' + esc(t.blurb) + '</p>' +
-          '<dl class="kv" style="margin-top:12px">' +
+        openSheet(t.name, () => '<p class="note fg">' + esc(t.blurb) + '</p>' +
+          '<dl class="kv gap">' +
           '<dt>Best tonight</dt><dd>' + deg(found.alt || 0) + ' up, ' + Data.compass(found.az || 0) +
           ', ' + clock(found.at || Date.now(), place) + '</dd>' +
           (t.mag != null ? '<dt>Magnitude</dt><dd class="num">' + t.mag.toFixed(1) + '</dd>' : '') +
@@ -958,7 +1087,7 @@ const App = (() => {
         buzz(12, 80);
         toast(on ? 'Reminder set for that night' : 'Reminder removed');
         if (page) openPage(page.title, page.render, page.key);
-        Notify.sync();
+        syncNotify();
         break;
       }
       case 'addplace': placeSheet(null); break;
@@ -979,19 +1108,37 @@ const App = (() => {
         const lat = parseFloat($('#pLat').value), lon = parseFloat($('#pLon').value);
         const bortle = parseInt($('#bSlider').value, 10);
         if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-          toast('Those coordinates do not look right'); return;
+          inlineErr('#sheetBody', 'Those coordinates do not look right. Latitude runs from -90 to 90 and longitude from -180 to 180.');
+          return;
         }
+        const dup = Store.places().find(p => p.id !== ds.id && p.name.toLowerCase() === name.toLowerCase());
+        if (dup) { inlineErr('#sheetBody', 'You already have a place called ' + dup.name + '. Give this one its own name.'); return; }
         if (ds.id) Store.patchPlace(ds.id, { name, lat: +lat.toFixed(4), lon: +lon.toFixed(4), bortle });
         else Store.addPlace({ name, lat, lon, bortle });
-        invalidate(); closeSheet(); refreshTop(); setView('places'); Notify.sync();
+        invalidate(); closeSheet(); refreshTop(); setView('places');
+        tuneAlertBar(); syncNotify();
         toast(ds.id ? 'Place saved' : 'Place added');
         break;
       }
-      case 'sethome': Store.setHome(ds.id); invalidate(); refreshTop(); renderPlaces(); Notify.sync(); break;
+      case 'sethome': Store.setHome(ds.id); invalidate(); refreshTop(); renderPlaces();
+        tuneAlertBar(); syncNotify(); break;
       case 'compare': Store.setCompare(ds.id); renderPlaces(); break;
       case 'delplace': {
         if (Store.places().length < 2) return;
-        Store.removePlace(ds.id); invalidate(); refreshTop(); renderPlaces(); Notify.sync();
+        const p = Store.place(ds.id);
+        if (!p) return;
+        const n = Store.log().filter(e => e.placeId === p.id).length;
+        openSheet('Remove ' + p.name, () => '<p class="note fg">' +
+          (n ? n + ' log ' + (n === 1 ? 'entry keeps its' : 'entries keep their') + ' conditions but the place name comes off ' +
+               (n === 1 ? 'it' : 'them') + '. ' : '') + 'There is no undo.</p>' +
+          '<div class="btnrow"><button class="btn ghost" data-act="close-sheet">Keep it</button>' +
+          '<button class="btn danger" data-act="delplace-yes" data-id="' + p.id + '">Remove</button></div>');
+        break;
+      }
+      case 'delplace-yes': {
+        if (Store.places().length < 2) return;
+        Store.removePlace(ds.id); closeSheet(); invalidate(); refreshTop(); renderPlaces();
+        tuneAlertBar(); syncNotify();
         toast('Place removed');
         break;
       }
@@ -1006,7 +1153,7 @@ const App = (() => {
       }
       case 'save-log': {
         const set = logSheet.picked, note = $('#lgNote').value.trim();
-        if (!set.size && !note) { toast('Pick something you saw, or write a line'); return; }
+        if (!set.size && !note) { inlineErr('#sheetBody', 'Pick something you saw, or write a line about the night.'); return; }
         const m = logSheet.model;
         if (ds.id) Store.patchEntry(ds.id, { phenomena: [...set], note });
         else Store.addEntry({
@@ -1023,8 +1170,8 @@ const App = (() => {
       case 'life': {
         const it = Data.LIFE_INDEX[ds.id];
         const got = Store.ticks()[ds.id];
-        openSheet(it.name, () => '<p class="note" style="color:var(--fg)">' + esc(it.hint) + '</p>' +
-          (got ? '<dl class="kv" style="margin-top:12px"><dt>First seen</dt><dd>' +
+        openSheet(it.name, () => '<p class="note fg">' + esc(it.hint) + '</p>' +
+          (got ? '<dl class="kv gap"><dt>First seen</dt><dd>' +
             dateLong(got.first, place) + ' ' + P(got.first, place).getUTCFullYear() + '</dd>' +
             '<dt>Times</dt><dd class="num">' + got.count + '</dd></dl>'
             : '<p class="note">Not on your list yet.</p>') +
@@ -1036,12 +1183,12 @@ const App = (() => {
         if (ds.id === 'alerts-on') {
           const on = !s.alerts.on;
           Store.setAlert('on', on);
-          if (on) { Notify.request(); Notify.sync(); } else Notify.cancel();
+          if (on) { Notify.request(); syncNotify(); } else Notify.cancel();
         }
         if (ds.id === 'alerts-ecl') Store.setAlert('eclipses', !s.alerts.eclipses);
         if (ds.id === 'alerts-dig') Store.setAlert('digest', !s.alerts.digest);
-        if (ds.id === 'clock') Store.set('clock24', !s.clock24);
-        Notify.sync();
+        if (ds.id === 'clock') { Store.set('clock24', !s.clock24); setView(view); }
+        syncNotify();
         openPage('Settings', settingsPage, 'set');
         break;
       }
@@ -1050,16 +1197,17 @@ const App = (() => {
       case 'method': openPage('Method', methodPage, 'meth'); break;
       case 'noop': break;
       case 'export': doExport(); break;
+      case 'import': { const f = $('#importFile'); if (f) { inlineErr('#pageBody', ''); f.value = ''; f.click(); } break; }
       case 'erase': {
         openSheet('Erase everything', () =>
-          '<p class="note" style="color:var(--fg)">This removes your places, your log and your life list from ' +
+          '<p class="note fg">This removes your places, your log and your life list from ' +
           'this phone. There is no copy anywhere else, so it cannot be undone.</p>' +
           '<div class="btnrow"><button class="btn ghost" data-act="close-sheet">Keep it</button>' +
           '<button class="btn danger" data-act="erase-yes">Erase</button></div>');
         break;
       }
       case 'erase-yes': {
-        Store.eraseAll(); Notify.cancel(); invalidate(); closeSheet(); closePage();
+        Store.eraseAll(); Notify.cancel(); invalidate(); closeSheet(); pageStack = []; closePage();
         onboardStep = 0; onboardDraft = {}; $('#app').hidden = true; $('#onboard').hidden = false;
         renderOnboard();
         break;
@@ -1067,32 +1215,34 @@ const App = (() => {
       case 'close-sheet': closeSheet(); break;
       case 'ob-city': onboardDraft = { ...onboardDraft, lat: +ds.lat, lon: +ds.lon, name: ds.name };
         $('#obLat').value = ds.lat; $('#obLon').value = ds.lon; $('#obHits').innerHTML = '';
-        $('#obCity').value = ds.name; break;
+        $('#obCity').value = ds.name; inlineErr('#onboardBody', ''); break;
       case 'ob-bortle': onboardDraft.bortle = +ds.b; renderOnboard(); break;
       case 'ob-back': onboardStep--; renderOnboard(); break;
       case 'ob-next': {
         if (onboardStep === 0) {
           const lat = parseFloat($('#obLat').value), lon = parseFloat($('#obLon').value);
           if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-            toast('Pick a city, or type coordinates'); return;
+            inlineErr('#onboardBody', 'Pick a city from the list, or type coordinates: latitude -90 to 90, longitude -180 to 180.');
+            return;
           }
           onboardDraft.lat = lat; onboardDraft.lon = lon;
           onboardDraft.name = onboardDraft.name || ($('#obCity').value.trim() || 'My sky');
           onboardStep = 1;
         } else if (onboardStep === 1) {
-          if (!onboardDraft.bortle) { toast('Pick the one closest to your sky'); return; }
+          if (!onboardDraft.bortle) { inlineErr('#onboardBody', 'Pick the one closest to your sky. You can change it later in Places.'); return; }
           onboardStep = 2;
         }
         renderOnboard();
         break;
       }
       case 'ob-alerts': case 'ob-done': {
+        if (Store.home()) return;
         Store.addPlace(onboardDraft);
         Store.set('seenIntro', true);
         if (name === 'ob-alerts') { Store.setAlert('on', true); Notify.request(); }
         $('#onboard').hidden = true; $('#app').hidden = false;
         invalidate(); refreshTop(); applyRed(); setView('tonight');
-        setTimeout(() => Notify.sync(), 200);
+        setTimeout(() => { tuneAlertBar(); syncNotify(); }, 200);
         break;
       }
     }
@@ -1131,16 +1281,16 @@ const App = (() => {
         '</dl>'));
       setTimeout(() => { if ($('#dialCv')) Draw.skyDial($('#dialCv'), marks, { height: 160 }); }, 0);
     } else if (h.type === 'core') {
-      H.push(card('<p class="note" style="color:var(--fg)">The bright centre of our own galaxy, in Sagittarius. ' +
+      H.push(card('<p class="note fg">The bright centre of our own galaxy, in Sagittarius. ' +
         'It needs a dark sky, a low southern horizon and about twenty minutes of dark adaptation. Once you have ' +
         'seen it properly you will notice it every clear summer night for the rest of your life.</p>' +
-        '<dl class="kv" style="margin-top:12px"><dt>Highest tonight</dt><dd>' + deg(h.core.alt) + ' at ' +
+        '<dl class="kv gap"><dt>Highest tonight</dt><dd>' + deg(h.core.alt) + ' at ' +
         clock(h.core.at, place) + '</dd><dt>Direction</dt><dd>' + Data.compass(h.core.az) + '</dd></dl>'));
     } else if (h.type === 'lunar-eclipse' || h.type === 'solar-eclipse') {
-      H.push(card('<p class="note" style="color:var(--fg)">Open the Events tab for the full circumstances of ' +
+      H.push(card('<p class="note fg">Open the Events tab for the full circumstances of ' +
         'this eclipse from your place.</p>'));
     } else {
-      H.push(card('<p class="note" style="color:var(--fg)">The dark side of a crescent Moon is lit by sunlight ' +
+      H.push(card('<p class="note fg">The dark side of a crescent Moon is lit by sunlight ' +
         'bounced off the Earth. Binoculars make it obvious, and it is at its best in the few days either side ' +
         'of a new moon.</p>'));
     }
@@ -1150,18 +1300,22 @@ const App = (() => {
   function nightPage(m, place) {
     const H = ['<h1 class="h1">' + wdayName(m.n.t0, place) + ' night</h1>',
       '<p class="lede">' + dateLong(m.n.t0, place) + '</p>',
-      card('<div class="score"><span class="val num">' + m.score.value.toFixed(1) + '</span>' +
-        '<span class="of">out of ten</span></div><p class="verdict">' + esc(m.score.verdict) + '</p>' +
+      card('<div class="hero"><div class="hero-ring">' + Art.eclipse(m.score.value / 10) +
+        '<span class="val num">' + m.score.value.toFixed(1) + '</span></div>' +
+        '<div class="hero-t"><span class="of">Out of ten</span><p class="verdict">' + esc(m.score.verdict) + '</p></div></div>' +
         '<div class="parts">' + m.score.parts.map(partRow).join('') + '</div>')];
-    H.push(card(m.list.slice(0, 6).map((h, i) => '<div class="row" style="cursor:default">' +
+    H.push(card(m.list.slice(0, 6).map((h, i) => '<div class="row static">' +
       '<span class="when"><b>' + clock(h.at, place).split(' ')[0] + '</b>best</span>' +
       '<span class="t"><b>' + esc(h.title) + '</b><i>' + esc(h.sub || '') + '</i></span>' +
       '<span class="r">' + Math.round(h.weight * 10) + '/10</span></div>').join('') ||
-      '<p class="empty">Nothing scheduled.</p>'));
+      emptyState(Art.hill(), 'Nothing scheduled', 'An ordinary night, which is most of them.')));
     return H.join('');
   }
 
   function doExport() {
+    // A double tap on Export must not write the same file twice.
+    if (performance.now() - (doExport.last || -9e9) < 1200) return;
+    doExport.last = performance.now();
     const json = Store.exportJson();
     const name = 'umbra-log-' + new Date().toISOString().slice(0, 10) + '.json';
     try {
@@ -1182,33 +1336,71 @@ const App = (() => {
     } catch (e) { toast('Export failed on this device'); }
   }
 
+  function doImport(file) {
+    if (!file) return;
+    const note = $('#importNote');
+    const say = (msg, bad) => {
+      if (bad) { inlineErr('#pageBody', msg); if (note) note.textContent = ''; }
+      else { inlineErr('#pageBody', ''); if (note) note.textContent = msg; }
+    };
+    if (file.size > 20 * 1024 * 1024) { say('That file is too large to be an Umbra export.', true); return; }
+    const rd = new FileReader();
+    rd.onerror = () => say('That file could not be read.', true);
+    rd.onload = () => {
+      const r = Store.importJson(String(rd.result || ''));
+      if (r.error) { say(r.error, true); return; }
+      invalidate(); refreshTop(); syncNotify(); tuneAlertBar();
+      buzz(18, 120);
+      say('Imported ' + r.entries + ' ' + (r.entries === 1 ? 'entry' : 'entries') + ' and ' + r.places + ' ' +
+          (r.places === 1 ? 'place' : 'places') + '. Anything already here was left alone.', false);
+    };
+    rd.readAsText(file);
+  }
+
   /* ================= wiring ================= */
 
+  /** A tap that closes a sheet or a page opens a short quiet window, because the second half
+      of a double tap lands on whatever was underneath. The Back gesture is not a tap, so it
+      never starts one. */
+  function guarded(fn) {
+    return ev => {
+      // Event time, not wall time: a handler that takes a while must not stretch the window.
+      if (ev.timeStamp < quietUntil && !ev.target.closest('#sheet')) return;
+      const sheetOpen = !$('#sheet').hidden, pageOpen = !$('#page').hidden;
+      fn(ev);
+      if ((sheetOpen && $('#sheet').hidden) || (pageOpen && $('#page').hidden)) quietUntil = ev.timeStamp + 300;
+    };
+  }
+
   function wire() {
-    document.addEventListener('click', ev => {
+    document.addEventListener('click', guarded(ev => {
       const t = ev.target.closest('[data-act]');
       if (t) { act(t.dataset.act, t.dataset, t); return; }
       if (ev.target.closest('.tab')) return;
       if (ev.target === $('#sheet')) closeSheet();
-    });
+    }));
+    // The tab bar and the top bar sit exactly where a sheet's bottom button and a page's Back
+    // button were a moment ago, so they take the same quiet window as everything else.
     document.querySelectorAll('.tab').forEach(b =>
-      b.addEventListener('click', () => { buzz(8, 60); setView(b.dataset.view); }));
-    $('#setBtn').addEventListener('click', () => openPage('Settings', settingsPage, 'set'));
-    $('#placeBtn').addEventListener('click', () => setView('places'));
-    $('#redBtn').addEventListener('click', () => {
+      b.addEventListener('click', guarded(() => { buzz(8, 60); setView(b.dataset.view); })));
+    $('#setBtn').addEventListener('click', guarded(() => openPage('Settings', settingsPage, 'set')));
+    $('#placeBtn').addEventListener('click', guarded(() => setView('places')));
+    $('#redBtn').addEventListener('click', guarded(() => {
       const s = Store.settings();
       Store.set('red', s.red === 'on' ? 'off' : 'on');
       applyRed(); buzz(10, 70);
       if (view === 'tonight') renderTonight();
       if (page) $('#pageBody').innerHTML = page.render();
-    });
-    $('#pageBack').addEventListener('click', closePage);
-    $('#sheetClose').addEventListener('click', closeSheet);
+    }));
+    $('#pageBack').addEventListener('click', guarded(closePage));
+    $('#sheetClose').addEventListener('click', guarded(closeSheet));
 
     document.addEventListener('input', ev => {
       if (ev.target.id === 'minS') {
         Store.setAlert('min', parseFloat(ev.target.value));
+        Store.setAlert('minSet', true);
         $('#minV').textContent = parseFloat(ev.target.value).toFixed(1);
+        fillCeiling();
       }
       if (ev.target.id === 'hourS') {
         Store.setAlert('hour', parseInt(ev.target.value, 10));
@@ -1216,9 +1408,13 @@ const App = (() => {
       }
     });
     document.addEventListener('change', ev => {
-      if (ev.target.id === 'minS' || ev.target.id === 'hourS') Notify.sync();
+      if (ev.target.id === 'minS' || ev.target.id === 'hourS') syncNotify();
+      if (ev.target.id === 'importFile') doImport(ev.target.files && ev.target.files[0]);
     });
-    window.addEventListener('resize', () => { if (view === 'tonight') drawTonight(tonightModel(Store.home())); });
+    window.addEventListener('resize', () => {
+      const p = Store.home();
+      if (p && view === 'tonight' && !$('#app').hidden) drawTonight(tonightModel(p));
+    });
   }
 
   /* ================= lifecycle ================= */
@@ -1237,7 +1433,7 @@ const App = (() => {
     if (Store.home()) {
       invalidate(); applyRed();
       if (view === 'tonight') renderTonight();
-      setTimeout(() => Notify.sync(), 300);
+      setTimeout(syncNotify, 300);
     }
   }
   function onPause() { }
@@ -1246,12 +1442,12 @@ const App = (() => {
     wire();
     if (!Store.home()) {
       $('#onboard').hidden = false;
-      onboardDraft = { bortle: 6 };
+      onboardDraft = {};
       renderOnboard();
     } else {
       $('#app').hidden = false;
       refreshTop(); applyRed(); setView('tonight');
-      setTimeout(() => Notify.sync(), 400);
+      setTimeout(() => { syncNotify(); tuneAlertBar(); }, 900);
     }
     setInterval(() => { if (redAuto) applyRed(); }, 120000);
   }

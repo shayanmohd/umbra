@@ -28,8 +28,25 @@ const Notify = (() => {
     return day + hour * HOUR - off;
   }
 
-  /** Builds the plan. Pure, so it can be shown on screen before it is handed to the system. */
-  function plan(now) {
+  /* A scored night costs a few milliseconds and the plan, the ceiling and the calibration
+     all want the same ones, so each is worked out once per place and sky and kept. */
+  let memo = {}, memoN = 0;
+  function scored(home, t) {
+    const key = home.id + ':' + home.bortle + ':' + Sky.anchorFor(t, home);
+    let row = memo[key];
+    if (!row) {
+      const n = Sky.night(home, t);
+      const hap = Sky.happenings(n);
+      row = { n, hap, score: Sky.score(n, hap) };
+      if (++memoN > 800) { memo = {}; memoN = 1; }
+      memo[key] = row;
+    }
+    return row;
+  }
+
+  /** Builds the plan. Pure, so it can be shown on screen before it is handed to the system.
+      `extra` carries the alerts the user asked for by hand, on named events. */
+  function plan(now, extra) {
     now = now || Date.now();
     const s = Store.settings(), a = s.alerts;
     const home = Store.home();
@@ -38,11 +55,9 @@ const Notify = (() => {
 
     const nights = [];
     for (let d = 0; d < HORIZON; d++) {
-      const t = now + d * DAY;
-      const n = Sky.night(home, t);
-      if (nights.some(x => x.n.t0 === n.t0)) continue;
-      const hap = Sky.happenings(n);
-      nights.push({ n, hap, score: Sky.score(n, hap) });
+      const row = scored(home, now + d * DAY);
+      if (nights.some(x => x.n.t0 === row.n.t0)) continue;
+      nights.push(row);
     }
 
     for (const row of nights) {
@@ -59,6 +74,9 @@ const Notify = (() => {
     if (a.eclipses) {
       for (const e of Astro.eclipses(Astro.jdFromMs(now), Astro.jdFromMs(now + 120 * DAY), home.lat, home.lon)) {
         if (!e.local) continue;
+        /* A penumbral eclipse is the Moon dimming slightly on one side. It belongs in the
+           calendar, not in a notification three quarters of an hour before it starts. */
+        if (e.local.type === 'Penumbral') continue;
         const at = Astro.msFromJd(e.jd);
         const solar = e.kind === 'solar';
         const start = e.local.start ? Astro.msFromJd(e.local.start) : at;
@@ -108,6 +126,8 @@ const Notify = (() => {
       }
     }
 
+    for (const o of extra || []) if (o.at > now + 5 * MIN) out.push(o);
+
     // One a day at most, the loudest wins, and never more than the system will hold.
     const byDay = {};
     for (const o of out.sort((x, y) => y.score - x.score || x.at - y.at)) {
@@ -136,9 +156,9 @@ const Notify = (() => {
   }
 
   /** Recompute and hand the whole schedule to the system. Safe to call on every open. */
-  function sync() {
+  function sync(extra) {
     const n = native();
-    const list = plan();
+    const list = plan(null, extra);
     if (!n) return list;
     try {
       if (!list.length) { n.cancelNotifications && n.cancelNotifications(); return list; }
@@ -156,14 +176,36 @@ const Notify = (() => {
     if (!home) return null;
     let best = null;
     for (let d = 0; d < (days || 42); d++) {
-      const n = Sky.night(home, Date.now() + d * DAY);
+      const { n, score: s } = scored(home, Date.now() + d * DAY);
       if (best && best.t0 === n.t0) continue;
-      const hap = Sky.happenings(n);
-      const s = Sky.score(n, hap);
       if (!best || s.value > best.value) best = { value: s.value, t0: n.t0, top: s.top };
     }
     return best;
   }
 
-  return { plan, sync, cancel, allowed, request, clock, dateShort, ceiling };
+  /* The bar only means something if it sits where this sky can actually reach. A Bortle 8
+     garden never scores what a dark site does, so a fixed default would leave most people
+     with an alert that never arrives. Umbra measures the year once, in small pieces so the
+     screen never stalls, and puts the bar at roughly the best dozen nights that sky gets. */
+  function calibrate(done) {
+    const home = Store.home();
+    if (!home) { done(null); return; }
+    const vals = [], seen = {};
+    let d = 0;
+    (function step() {
+      const until = Math.min(d + 10, 365);
+      for (; d < until; d++) {
+        const row = scored(home, Date.now() + d * DAY);
+        if (seen[row.n.t0]) continue;
+        seen[row.n.t0] = 1;
+        vals.push(row.score.value);
+      }
+      if (d < 365) { setTimeout(step, 0); return; }
+      vals.sort((a, b) => b - a);
+      const v = vals[Math.min(11, vals.length - 1)];
+      done(Math.min(9.5, Math.max(5, Math.ceil(v * 2) / 2)));
+    })();
+  }
+
+  return { plan, sync, cancel, allowed, request, clock, dateShort, ceiling, calibrate, atHour };
 })();

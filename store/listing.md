@@ -29,7 +29,7 @@ Add the field you sometimes drive to and Umbra puts the two skies side by side f
 
 A LIFE LIST
 
-Twenty seven things worth seeing once, from a total eclipse to noctilucent clouds to the core of the Milky Way. Log a night in two taps and Umbra attaches the conditions it computed, so the entry remembers what the sky was really like. Everything exports as one JSON file whenever you want it.
+Twenty seven things worth seeing once, from a total eclipse to noctilucent clouds to the core of the Milky Way. Log a night in two taps and Umbra attaches the conditions it computed, so the entry remembers what the sky was really like. Everything exports as one JSON file whenever you want it, and imports again on a new phone.
 
 RED LIGHT MODE
 
@@ -37,7 +37,7 @@ The whole app in red, so twenty minutes of dark adaptation survive a glance at y
 
 THE ALERT RULE
 
-You set the score at which a night is worth interrupting you. Umbra shows you the best night your sky can reach in the next six weeks, so the bar you set means something. Then it holds to it: at most one notification a day, nothing in the middle of the night, and an eclipse warning three quarters of an hour before it starts.
+You set the score at which a night is worth interrupting you, and Umbra starts that bar where your own sky can actually reach, measured over a year from your coordinates. It also shows you the best night of the next six weeks, so the number means something. Then it holds to it: at most one notification a day, nothing in the middle of the night, and an eclipse warning three quarters of an hour before it starts.
 
 WHAT IT WILL NOT PRETEND TO DO
 
@@ -58,5 +58,5 @@ No account, no subscription, no adverts, no analytics, nothing to unlock. Positi
 - Target audience: not directed at children, suitable for all ages.
 - Government, financial or health features: none.
 - Advertising ID: not used.
-- Generative AI assets: none. The icon and feature graphic are drawn from primitives in code.
+- Generative AI assets: none. The icon and feature graphic are hand-written SVG and HTML, rendered by a script.
 - Privacy policy: https://shayanmohd.github.io/umbra/privacy-policy.html
