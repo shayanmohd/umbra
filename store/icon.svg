@@ -51,7 +51,7 @@
   <g id="fg">
     <!-- the corona: a wide soft glow, then the streamers, then a tighter halo on the ring -->
     <circle cx="54" cy="54" r="27" fill="#FFB454" opacity="0.72" filter="url(#wide)"/>
-    <g fill="#FFD790" opacity="0.62" filter="url(#hair)"><polygon points="67.48,34.75 69.42,36.26 76.47,25.24"/><polygon points="75.43,44.37 76.11,46.04 84.13,41.83"/><polygon points="55.64,30.56 57.27,30.73 57.29,22.67"/><polygon points="77.13,58.16 76.82,59.61 83.83,60.34"/><polygon points="42.39,33.57 43.55,32.95 40.15,27.95"/><polygon points="72.39,68.63 71.6,69.57 75.83,72.32"/><polygon points="32.47,63.41 31.97,62.19 26.65,65.05"/><polygon points="32.42,44.7 33.01,43.44 26.36,41.11"/><polygon points="43.48,75.01 42.46,74.47 41.09,78.28"/><polygon points="45.46,32.11 46.47,31.74 44.59,28.16"/><polygon points="58.56,77.05 57.6,77.22 58.69,80.59"/></g>
+    <g fill="#FFD790" opacity="0.62" filter="url(#hair)"><polygon points="67.48,34.75 69.42,36.26 74.01,28.39"/><polygon points="75.43,44.37 76.11,46.04 84.13,41.83"/><polygon points="55.64,30.56 57.27,30.73 57.29,22.67"/><polygon points="77.13,58.16 76.82,59.61 83.83,60.34"/><polygon points="42.39,33.57 43.55,32.95 40.15,27.95"/><polygon points="72.39,68.63 71.6,69.57 75.83,72.32"/><polygon points="32.47,63.41 31.97,62.19 26.65,65.05"/><polygon points="32.42,44.7 33.01,43.44 26.36,41.11"/><polygon points="43.48,75.01 42.46,74.47 41.09,78.28"/><polygon points="45.46,32.11 46.47,31.74 44.59,28.16"/><polygon points="58.56,77.05 57.6,77.22 58.69,80.59"/></g>
     <circle cx="54" cy="54" r="23.5" fill="none" stroke="#FFC66E" stroke-width="4.5" opacity="0.55" filter="url(#soft)"/>
     <!-- the ring itself -->
     <circle cx="54" cy="54" r="23.5" fill="none" stroke="url(#ring)" stroke-width="2.7"/>
@@ -67,7 +67,7 @@
 
   <g id="mono">
     <path d="M54 29a25 25 0 1 0 0.01 0z M54 33.5a20.5 20.5 0 1 1 -0.01 0z" fill="#000" fill-rule="evenodd"/>
-    <g fill="#000"><polygon points="68.23,33.45 70.5,35.22 76.19,25.59"/><polygon points="76.76,43.66 77.55,45.62 84.27,41.77"/><polygon points="55.66,29.05 57.57,29.26 57.32,22.37"/><polygon points="78.62,58.35 78.26,60.04 84.27,60.43"/><polygon points="41.59,32.3 42.95,31.58 39.87,27.42"/><polygon points="73.61,69.51 72.68,70.61 76.41,72.8"/></g>
+    <g fill="#000"><polygon points="68.23,33.45 70.5,35.22 74.02,28.37"/><polygon points="76.76,43.66 77.55,45.62 84.27,41.77"/><polygon points="55.66,29.05 57.57,29.26 57.32,22.37"/><polygon points="78.62,58.35 78.26,60.04 84.27,60.43"/><polygon points="41.59,32.3 42.95,31.58 39.87,27.42"/><polygon points="73.61,69.51 72.68,70.61 76.41,72.8"/></g>
     <circle cx="67.14" cy="34.52" r="4.2" fill="#000"/>
   </g>
 </svg>

@@ -2,4 +2,4 @@ A second pass over everything you can see.
 
 The score now sits inside an eclipse ring whose corona brightens with the night, and the whole app has moved from flat black to midnight blue, with drawn scenes on its empty screens.
 
-Fixed: a reminder set on an event now arrives as a real notification that evening, the alert bar starts where your own sky can reach, and a double tap no longer opens things twice or switches tabs. Backups can be imported again from Settings.
+Fixed: a reminder set on an event now arrives as a real notification that evening, the alert bar starts where your own sky can reach, and a double tap no longer opens things twice or switches tabs. A backup can now be imported from Settings.

@@ -204,9 +204,12 @@ const Draw = (() => {
       const px = x(m.az), py = y(m.alt);
       g.fillStyle = m.dim ? css('--dim') : css('--accent');
       g.beginPath(); g.arc(px, py, m.dim ? 3.5 : 5, 0, Math.PI * 2); g.fill();
-      g.font = '11px ' + css('--font'); g.textAlign = 'center'; g.textBaseline = 'bottom';
+      g.font = '11px ' + css('--font'); g.textAlign = 'center';
       g.fillStyle = m.dim ? css('--dim') : css('--fg');
-      g.fillText(m.label, Math.max(24, Math.min(w - 24, px)), py - 8);
+      // A conjunction puts two marks a degree apart: the dimmer label goes below its dot.
+      const crowded = m.dim && marks.some(o => o !== m && Math.abs(x(o.az) - px) < 44 && Math.abs(y(o.alt) - py) < 26);
+      g.textBaseline = crowded ? 'top' : 'bottom';
+      g.fillText(m.label, Math.max(24, Math.min(w - 24, px)), crowded ? py + 7 : py - 8);
     }
   }
 

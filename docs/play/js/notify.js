@@ -2,8 +2,9 @@
 
    The rule the whole thing rests on: an alert has to be worth the interruption. Umbra sends an
    evening heads up on nights that clear the score you set, one warning per eclipse you can
-   actually see, and a Sunday digest. It never sends anything at 3am, because it cannot see the
-   weather and a wake up it cannot stand behind is worse than silence.                        */
+   actually see, and a Sunday digest. Nothing goes out at 3am for a merely good sky, because it
+   cannot see the weather and a wake up it cannot stand behind is worse than silence; the one
+   thing allowed to wake you is an eclipse you can see, and the Eclipses switch turns that off. */
 const Notify = (() => {
   const DAY = 86400000, HOUR = 3600000, MIN = 60000;
   const MAX = 64, HORIZON = 45;      // days computed ahead
@@ -81,9 +82,14 @@ const Notify = (() => {
         const solar = e.kind === 'solar';
         const start = e.local.start ? Astro.msFromJd(e.local.start) : at;
         const fire = Math.max(now + 5 * MIN, start - 45 * MIN);
-        if (fire > now) {
+        /* The warning says how long is actually left, not a fixed three quarters of an hour:
+           an app opened half an hour before first contact gets a shorter, truthful lead, and
+           one opened after it has begun gets none. */
+        const lead = Math.round((start - fire) / MIN);
+        if (lead >= 1) {
           out.push({ at: fire, kind: 'eclipse', score: 10,
-            title: (solar ? 'Solar' : 'Lunar') + ' eclipse from ' + home.name + ' in 45 minutes',
+            title: (solar ? 'Solar' : 'Lunar') + ' eclipse from ' + home.name + ' in ' + lead +
+                   ' minute' + (lead === 1 ? '' : 's'),
             body: solar
               ? e.local.type + ', ' + Math.round(e.local.obscuration * 100) + ' per cent covered at most. Never look at the Sun without a proper filter.'
               : e.local.type + ', with the Moon ' + Math.round(e.local.moonAlt) + ' degrees up. No equipment needed.' });

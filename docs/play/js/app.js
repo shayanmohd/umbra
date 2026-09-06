@@ -17,6 +17,7 @@ const App = (() => {
   let page = null;              // { title, render, key }
   let pageStack = [];           // the pages underneath the open one, so Back retraces steps
   let quietUntil = 0;           // ignore taps for a moment after a sheet or page closes
+  let sheetShownAt = -1e9;      // the backdrop does not close a sheet the same thumb just opened
   let onboardStep = 0, onboardDraft = {};
   let redAuto = false;
 
@@ -164,7 +165,7 @@ const App = (() => {
       H.push('<p class="h2">Worth pointing at</p>');
       H.push(card(m.targets.slice(0, 6).map(t =>
         '<button class="row" data-act="target" data-id="' + t.id + '">' +
-        '<span class="when"><b>' + Math.round(t.alt) + '</b>deg</span>' +
+        '<span class="when"><b>' + deg(t.alt) + '</b>up</span>' +
         '<span class="t"><b>' + esc(t.name) + '</b><i>' + esc(t.kind) + ', ' + esc(Data.compass(t.az)) +
         ' at ' + clock(t.at, place) + (t.easy ? '' : ', needs a darker sky than yours') + '</i></span>' +
         CHEV + '</button>').join('')));
@@ -751,7 +752,7 @@ const App = (() => {
       '<div class="field"><label for="hourS">Send it at <b class="num" id="hourV">' + a.hour + ':00</b></label>' +
       '<input type="range" id="hourS" min="12" max="22" step="1" value="' + a.hour + '"></div>' +
       toggleRow('alerts-ecl', 'Eclipses', 'Three days ahead, and again three quarters of an hour before it ' +
-        'starts. A penumbral eclipse stays in the calendar.', a.eclipses) +
+        'starts, whatever the hour. A penumbral eclipse stays in the calendar.', a.eclipses) +
       toggleRow('alerts-dig', 'Sunday digest', 'The best night of the coming week, once a week.', a.digest)));
     if (a.on) H.push(card('<h3>What is scheduled</h3><div id="planBox">' + Art.skeleton(3) + '</div>'));
 
@@ -812,9 +813,10 @@ const App = (() => {
         'Kp index would be a lie. It does not track satellites, because their orbits change faster than an offline ' +
         'app could keep up with. It will never ask for your location, an account or a payment.</p>') +
       card('<h3>The alert rule</h3>' +
-        '<p>Umbra sends at most one notification a day, none at all through the night, and only for a night that ' +
-        'clears the score you set yourself. It would rather stay silent than waste a clear evening of your ' +
-        'attention on a marginal one.</p>') + '</div>';
+        '<p>Umbra sends at most one notification a day, in the evening, and only for a night that clears the ' +
+        'score you set yourself. The one exception is an eclipse you can see from here: that gets a warning ' +
+        'three quarters of an hour before it starts, even in the small hours, and the Eclipses switch turns it ' +
+        'off. It would rather stay silent than waste a clear evening of your attention on a marginal one.</p>') + '</div>';
   }
 
   /* ================= onboarding ================= */
@@ -860,10 +862,11 @@ const App = (() => {
     } else {
       B.innerHTML = '<h1 class="h1">The promise</h1>' +
         '<p class="lede">Most sky apps lose people by crying wolf. Umbra is built the other way round.</p>' +
-        card('<p class="note fg">It sends at most one notification a day, ' +
-          'never during the night, and only for a night that clears a score you set yourself. It has no network ' +
-          'permission, so it cannot see clouds and it will never claim to. Everything else it tells you is ' +
-          'computed here, from the same algorithms an observatory uses.</p>') +
+        card('<p class="note fg">It sends at most one notification a day, in the evening, and only for a ' +
+          'night that clears a score you set yourself. The one thing allowed to wake you is an eclipse you can ' +
+          'see from here, and you can switch that off. It has no network permission, so it cannot see clouds ' +
+          'and it will never claim to. Everything else it tells you is computed here, from the same algorithms ' +
+          'an observatory uses.</p>') +
         card('<h3>Evening heads up</h3><p class="tiny">On the evening of a night worth going out for. You can ' +
           'change the bar, or turn this off, at any time in Settings.</p>' +
           '<div class="btnrow"><button class="btn" data-act="ob-alerts">Turn alerts on</button>' +
@@ -937,8 +940,8 @@ const App = (() => {
     const lead = 'The best night from ' + place.name + ' over the next six weeks scores ' +
       c.value.toFixed(1) + ', on ' + wdayName(c.t0, place) + ' ' + dateLong(c.t0, place) + '.';
     el.textContent = Store.settings().alerts.min > c.value
-      ? lead + ' Your bar sits above that, so no night will clear it in the next six weeks. That is ' +
-        'what a bar set for the best nights of the year looks like from this sky.'
+      ? lead + ' Your bar sits above that, so no evening heads up goes out in the next six weeks. ' +
+        'That is what a bar set for the best nights of the year looks like from this sky.'
       : lead + ' Anything at or above your bar reaches you that evening.';
   }
 
@@ -1044,14 +1047,29 @@ const App = (() => {
       Store.setAlert('min', v);
       Store.setAlert('tunedFor', key);
       if (skyKey(Store.home()) !== key) { tuneAlertBar(); return; }
-      if (page && page.key === 'set') openPage('Settings', settingsPage, 'set');
+      /* Calibration lands seconds after the page was drawn. Move the slider in place rather
+         than redrawing Settings, which would wipe an import result or an inline error the
+         user is still reading. */
+      if (page && page.key === 'set' && $('#minS')) {
+        $('#minS').value = v;
+        $('#minV').textContent = v.toFixed(1);
+        fillPlan();
+      }
       syncNotify();
     });
   }
 
   /* ================= actions ================= */
 
-  function act(name, ds, target) {
+  function act(name, ds, target, ev) {
+    /* A second tap on the same switch inside a third of a second is the same thumb, not a
+       change of mind: Compare, Remind me and the toggles all redraw under the finger. Event
+       time, not wall time, so a slow redraw after the first tap cannot stretch the window. */
+    if (name === 'compare' || name === 'remind' || name === 'toggle') {
+      const k = name + ':' + (ds.id || ds.key || ''), t = ev && ev.timeStamp ? ev.timeStamp : performance.now();
+      if (k === act.flip && t - act.flipAt < 350) return;
+      act.flip = k; act.flipAt = t;
+    }
     const place = Store.home();
     switch (name) {
       case 'happening': {
@@ -1366,18 +1384,21 @@ const App = (() => {
     return ev => {
       // Event time, not wall time: a handler that takes a while must not stretch the window.
       if (ev.timeStamp < quietUntil && !ev.target.closest('#sheet')) return;
-      const sheetOpen = !$('#sheet').hidden, pageOpen = !$('#page').hidden;
+      const sheetOpen = !$('#sheet').hidden, pageOpen = !$('#page').hidden, depth = pageStack.length;
       fn(ev);
-      if ((sheetOpen && $('#sheet').hidden) || (pageOpen && $('#page').hidden)) quietUntil = ev.timeStamp + 300;
+      if (!sheetOpen && !$('#sheet').hidden) sheetShownAt = ev.timeStamp;
+      // A page closing counts whether it revealed the screen underneath or the page beneath it.
+      if ((sheetOpen && $('#sheet').hidden) || (pageOpen && ($('#page').hidden || pageStack.length < depth))) quietUntil = ev.timeStamp + 300;
     };
   }
 
   function wire() {
     document.addEventListener('click', guarded(ev => {
       const t = ev.target.closest('[data-act]');
-      if (t) { act(t.dataset.act, t.dataset, t); return; }
+      if (t) { act(t.dataset.act, t.dataset, t, ev); return; }
       if (ev.target.closest('.tab')) return;
-      if (ev.target === $('#sheet')) closeSheet();
+      // The second half of a double tap on a row that opened a short sheet lands on the backdrop.
+      if (ev.target === $('#sheet') && ev.timeStamp - sheetShownAt > 300) closeSheet();
     }));
     // The tab bar and the top bar sit exactly where a sheet's bottom button and a page's Back
     // button were a moment ago, so they take the same quiet window as everything else.
@@ -1431,8 +1452,9 @@ const App = (() => {
   }
   function onResume() {
     if (Store.home()) {
-      invalidate(); applyRed();
-      if (view === 'tonight') renderTonight();
+      // The clock has moved and the year is thrown away, so whatever tab is showing is
+      // drawn again: a stale Events list would hold rows the feed no longer knows.
+      invalidate(); applyRed(); setView(view);
       setTimeout(syncNotify, 300);
     }
   }

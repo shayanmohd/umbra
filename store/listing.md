@@ -29,7 +29,7 @@ Add the field you sometimes drive to and Umbra puts the two skies side by side f
 
 A LIFE LIST
 
-Twenty seven things worth seeing once, from a total eclipse to noctilucent clouds to the core of the Milky Way. Log a night in two taps and Umbra attaches the conditions it computed, so the entry remembers what the sky was really like. Everything exports as one JSON file whenever you want it, and imports again on a new phone.
+Twenty seven things worth seeing once, from a total eclipse to noctilucent clouds to the core of the Milky Way. Log a night in a few taps and Umbra attaches the conditions it computed, so the entry remembers what the sky was really like. Everything exports as one JSON file whenever you want it, and imports again on a new phone.
 
 RED LIGHT MODE
 
@@ -37,7 +37,7 @@ The whole app in red, so twenty minutes of dark adaptation survive a glance at y
 
 THE ALERT RULE
 
-You set the score at which a night is worth interrupting you, and Umbra starts that bar where your own sky can actually reach, measured over a year from your coordinates. It also shows you the best night of the next six weeks, so the number means something. Then it holds to it: at most one notification a day, nothing in the middle of the night, and an eclipse warning three quarters of an hour before it starts.
+You set the score at which a night is worth interrupting you, and Umbra starts that bar where your own sky can actually reach, measured over a year from your coordinates. It also shows you the best night of the next six weeks, so the number means something. Then it holds to it: at most one notification a day, sent in the evening. The one thing allowed to reach you at night is an eclipse you can see from where you stand, three quarters of an hour before it starts, and you can switch that off.
 
 WHAT IT WILL NOT PRETEND TO DO
 

@@ -19,7 +19,9 @@
          background: radial-gradient(90% 40% at 50% 0%, #10193A 0%, var(--bg) 70%) no-repeat, var(--bg);
          font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased;
          font-feature-settings: "tnum" 1; }
-  img { max-width: 100%; display: block; }
+  /* height: auto, or the width and height attributes on the screenshots hold them at 1920px
+     tall while max-width squeezes them to a phone column, and every one comes out stretched. */
+  img { max-width: 100%; height: auto; display: block; }
   a { color: var(--accent); }
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
@@ -147,7 +149,7 @@
       <g style="filter: drop-shadow(0 10px 30px rgba(2, 4, 12, .6))">
 <!-- the corona: a wide soft glow, then the streamers, then a tighter halo on the ring -->
     <circle cx="54" cy="54" r="27" fill="#FFB454" opacity="0.72" filter="url(#wide)"/>
-    <g fill="#FFD790" opacity="0.62" filter="url(#hair)"><polygon points="67.48,34.75 69.42,36.26 76.47,25.24"/><polygon points="75.43,44.37 76.11,46.04 84.13,41.83"/><polygon points="55.64,30.56 57.27,30.73 57.29,22.67"/><polygon points="77.13,58.16 76.82,59.61 83.83,60.34"/><polygon points="42.39,33.57 43.55,32.95 40.15,27.95"/><polygon points="72.39,68.63 71.6,69.57 75.83,72.32"/><polygon points="32.47,63.41 31.97,62.19 26.65,65.05"/><polygon points="32.42,44.7 33.01,43.44 26.36,41.11"/><polygon points="43.48,75.01 42.46,74.47 41.09,78.28"/><polygon points="45.46,32.11 46.47,31.74 44.59,28.16"/><polygon points="58.56,77.05 57.6,77.22 58.69,80.59"/></g>
+    <g fill="#FFD790" opacity="0.62" filter="url(#hair)"><polygon points="67.48,34.75 69.42,36.26 74.01,28.39"/><polygon points="75.43,44.37 76.11,46.04 84.13,41.83"/><polygon points="55.64,30.56 57.27,30.73 57.29,22.67"/><polygon points="77.13,58.16 76.82,59.61 83.83,60.34"/><polygon points="42.39,33.57 43.55,32.95 40.15,27.95"/><polygon points="72.39,68.63 71.6,69.57 75.83,72.32"/><polygon points="32.47,63.41 31.97,62.19 26.65,65.05"/><polygon points="32.42,44.7 33.01,43.44 26.36,41.11"/><polygon points="43.48,75.01 42.46,74.47 41.09,78.28"/><polygon points="45.46,32.11 46.47,31.74 44.59,28.16"/><polygon points="58.56,77.05 57.6,77.22 58.69,80.59"/></g>
     <circle cx="54" cy="54" r="23.5" fill="none" stroke="#FFC66E" stroke-width="4.5" opacity="0.55" filter="url(#soft)"/>
     <!-- the ring itself -->
     <circle cx="54" cy="54" r="23.5" fill="none" stroke="url(#ring)" stroke-width="2.7"/>
@@ -248,7 +250,7 @@
       <ul>
         <li>Compute every number on the device, offline, from published algorithms</li>
         <li>Score tonight and the next six weeks for a place you typed in yourself</li>
-        <li>Send at most one notification a day, and none in the middle of the night</li>
+        <li>Send at most one notification a day, in the evening, unless an eclipse you switched on is about to start</li>
         <li>Keep your log and your life list in one file you can export, and import again, whenever you like</li>
         <li>Work permanently, for free, with no account and nothing to unlock</li>
       </ul>
@@ -267,7 +269,7 @@
 </section>
 
 <section class="wrap gallery">
-  <h2>Six screens</h2>
+  <h2>Four more screens</h2>
   <div class="rail">
     <figure><img src="shots/02-night.png" width="1080" height="1920" alt="The Moon, the darkness window and tonight's reasons to go out">
       <figcaption>Tonight, in order of what is worth your time</figcaption></figure>
@@ -285,8 +287,9 @@
     <blockquote>It would rather stay silent than waste your evening.</blockquote>
     <p>You set the score at which a night is worth telling you about, and Umbra starts that bar
       where your own sky can actually reach, measured over a year from your coordinates. Then it
-      holds to it: one notification a day at most, nothing at three in the morning, and no alert it
-      cannot stand behind.</p>
+      holds to it: one notification a day at most, in the evening, and no alert it cannot stand behind.
+      Only an eclipse you can see from your place, with the Eclipses switch on, may reach you in the
+      small hours.</p>
   </div>
 </section>
 
