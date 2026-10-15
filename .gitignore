@@ -22,3 +22,6 @@ local.properties
 
 # Drive script screenshots
 test/shots/
+
+# internal plan: competitor and pricing notes stay private
+BLUEPRINT.md
